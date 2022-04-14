@@ -33,8 +33,8 @@ Windows就直接在官网下载安装即可：[点我](https://wkhtmltopdf.org/d
 
 如果要使用其他浏览器,在下列行数中进行修改即可\
 要记得安装相应浏览器的driver：\
-Driver 可以在这个网页下载：[点我](https://liushilive.github.io/github_selenium_drivers/index.html)
-Chromium内核Edge浏览器就直接下这个[Microsoft Edge Driver(Chromium)](https://developer.microsoft.com/zh-cn/microsoft-edge/tools/webdriver/)
+Driver 可以在这个网页下载：[点我](https://liushilive.github.io/github_selenium_drivers/index.html) 
+Chromium内核Edge浏览器就直接下这个 [Microsoft Edge Driver(Chromium)](https://developer.microsoft.com/zh-cn/microsoft-edge/tools/webdriver/)
 ```Python3
 from selenium.webdriver.edge import webdriver
 from selenium.webdriver.edge.options import Options
@@ -45,7 +45,9 @@ self.options = Options()
 self.options.add_experimental_option('excludeSwitches', ['enable-logging'])
 self.driver = webdriver.WebDriver(options=self.options)
 ```
-例如要改成Chrome浏览器，就改成这样\
+
+例如要改成Chrome浏览器，就改成这样
+
 ```Python3
 from selenium.webdriver.chrome import webdriver
 from selenium.webdriver.chrome.options import Options

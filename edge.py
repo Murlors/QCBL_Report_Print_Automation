@@ -49,7 +49,7 @@ class Qcbl:
     def get_options_pdfkit(self):
         self.options_pdf = {
             'page-size': 'A4',
-            'encoding': 'gb18030',
+            'encoding': 'GB2312',
             'header-right': '[title]',
             'footer-right': '[page]',
             'cookie': [
@@ -95,9 +95,9 @@ class Qcbl:
             kk += 1
             dictionary_volume.update(
                 {int(re.findall(r"\d+\.?\d*", datalist_volume[kk - 1][0])[0]):
-                     self.driver.find_element(
+                     [self.driver.find_element(
                          By.XPATH, '/html/body/div[2]/div/div[2]/div[1]/table/tbody/tr[%d]/td[2]/a' % kk).
-                         get_attribute('href')
+                          get_attribute('href'), datalist_volume[kk - 1][1]]
                  }
             )
         while True:
@@ -115,14 +115,12 @@ class Qcbl:
                     sg.popup_error("卷数编号填写错误！", font=("微软雅黑", 16), keep_on_top=True)
                 else:
                     break
-
         print('选定的启始卷数：%s，选定的终止卷数：%s' % (volume_begin, volume_end))
         volume_begin = int(volume_begin)
         volume_end = int(volume_end)
-        vv = 0
         for t in range(volume_begin, volume_end + 1):
-            os.makedirs(os.path.join(self.path, datalist_volume[vv][1]), exist_ok=True)
-            volume_url = dictionary_volume[t]
+            os.makedirs(os.path.join(self.path, dictionary_volume[t][1]), exist_ok=True)
+            volume_url = dictionary_volume[t][0]
             self.driver.get(volume_url)
             datalist_problem = []
             dictionary_problem = {}
@@ -137,8 +135,7 @@ class Qcbl:
                             .get_attribute('href')})
                 pp += 1
             for problem_id, problem_url in dictionary_problem.items():
-                self.print_by_problem_id(problem_id, os.path.join(self.path, datalist_volume[vv][1]))
-            vv += 1
+                self.print_by_problem_id(problem_id, os.path.join(self.path, dictionary_volume[t][1]))
 
 
 class Base_GUI:
@@ -183,9 +180,9 @@ class Base_GUI:
                     if password == '':
                         sg.popup_error("请输入密码！", font=self.font, keep_on_top=True)
                         continue
-                    # if len(username) != 11:
-                    # sg.popup_error("用户名输错了！", font=self.font, keep_on_top=True)
-                    # continue
+                    if len(username) != 11:
+                        sg.popup_error("用户名输错了！", font=self.font, keep_on_top=True)
+                        continue
                     self.my.login(username, password)
                     self.way = values[0]
                     self.my.path = sg.popup_get_folder(message='选择实验报告打印的位置：',
