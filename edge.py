@@ -2,9 +2,8 @@ import os.path
 import re
 import PySimpleGUI as sg
 import pdfkit
+from selenium import webdriver
 from selenium.webdriver.common.by import By
-from selenium.webdriver.edge import webdriver
-from selenium.webdriver.edge.options import Options
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.wait import WebDriverWait
 
@@ -18,9 +17,9 @@ class Qcbl:
         self.options_pdf = None
         self.config_pdf = None
         self.path = None
-        self.options = Options()
+        self.options = webdriver.EdgeOptions()
         self.options.add_experimental_option('excludeSwitches', ['enable-logging'])
-        self.driver = webdriver.WebDriver(options=self.options)
+        self.driver = webdriver.Edge(options=self.options)
         self.wait = WebDriverWait(self.driver, 5, 0.5)
 
     def __del__(self):
@@ -49,7 +48,6 @@ class Qcbl:
     def get_options_pdfkit(self):
         self.options_pdf = {
             'page-size': 'A4',
-            'encoding': 'GB2312',
             'header-right': '[title]',
             'footer-right': '[page]',
             'cookie': [
