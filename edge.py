@@ -1,7 +1,7 @@
-import os.path
-import re
 import PySimpleGUI as sg
+import os.path
 import pdfkit
+import re
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
@@ -62,15 +62,26 @@ class Qcbl:
         self.options_pdf['footer-left'] = url
         pdfkit.from_url(url, output, options=self.options_pdf)
 
-    def print_by_problem_id(self, problem_id, locate):
-        problem_url = "http://10.132.246.246/judge/judgelist/?problem=" \
-                      + str(problem_id) + "&userprofile=" + self.stu_id
-        self.driver.get(problem_url)
-        self.wait.until(EC.presence_of_element_located((By.ID, 'problemStatus')))
-        # self.wait.until(EC.presence_of_element_located((By.XPATH, '//*[@id="problemStatus"]/table/tbody/tr/td[1]/a')))
-        # driver.find_element(By.XPATH, '//*[@id="problemStatus"]/table/tbody/tr/td[1]/a').click()
-        report_url = self.driver.find_element(
-            By.XPATH, '//*[@id="problemStatus"]/table/tbody/tr/td[1]/a').get_attribute('href') + 'print_exp/'
+    def print_by_problem_id(self, problem_id, locate, method, course_id=0):
+        if method == "course":
+            problem_url = "http://10.132.246.246/judge/course/" + str(course_id) + "/judgelist/?problem=" + str(
+                problem_id) + "&userprofile=" + self.stu_id
+            self.driver.get(problem_url)
+            self.wait.until(EC.presence_of_element_located((By.XPATH, '/html/body/div[2]/div/div[2]/div[1]/table')))
+            report_url = self.driver.find_element(
+                By.XPATH, '/html/body/div[2]/div/div[2]/div[1]/table/tbody/tr[1]/td[1]/a').\
+                             get_attribute('href') + 'print_exp/'
+
+        elif method == "id":
+            problem_url = "http://10.132.246.246/judge/judgelist/?problem=" + str(
+                problem_id) + "&userprofile=" + self.stu_id
+            self.driver.get(problem_url)
+            self.wait.until(EC.presence_of_element_located((By.ID, 'problemStatus')))
+            # self.wait.until(EC.presence_of_element_located((By.XPATH, '//*[@id="problemStatus"]/table/tbody/tr/td[1]/a')))
+            # driver.find_element(By.XPATH, '//*[@id="problemStatus"]/table/tbody/tr/td[1]/a').click()
+            report_url = self.driver.find_element(
+                By.XPATH, '//*[@id="problemStatus"]/table/tbody/tr/td[1]/a').get_attribute('href') + 'print_exp/'
+
         self.driver.get(report_url)
         self.wait.until(EC.title_contains('判题编号'))
         outputlist = self.driver.title.split(':')
@@ -79,7 +90,7 @@ class Qcbl:
 
     def by_problem_id(self, begin, end):
         for i in range(begin, end + 1):
-            self.print_by_problem_id(i, self.path)
+            self.print_by_problem_id(i, self.path, "id")
 
     def by_volume(self, course_id):
         course_url = 'http://10.132.246.246/course/' + course_id + '/detail/'
@@ -133,7 +144,8 @@ class Qcbl:
                             .get_attribute('href')})
                 pp += 1
             for problem_id, problem_url in dictionary_problem.items():
-                self.print_by_problem_id(problem_id, os.path.join(self.path, dictionary_volume[t][1]))
+                self.print_by_problem_id(problem_id, os.path.join(self.path, dictionary_volume[t][1]), "course",
+                                         course_id)
 
 
 class Base_GUI:
