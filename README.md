@@ -30,12 +30,15 @@ macOS用户可以直接使用Homebrew安装
 ```shell
 brew install wkhtmltopdf
 ```
-Windows用户就直接在官网下载安装即可：[点我](https://wkhtmltopdf.org/downloads.html)
+Windows用户就直接在官网下载安装：[点我](https://wkhtmltopdf.org/downloads.html)
 
 ---
 
-如果要使用其他浏览器,在下列行数中进行修改即可\
-要记得安装相应浏览器的driver，\
+如果要使用其他浏览器，在下列行数中进行修改即可
+
+如果是macOS使用Safari要先打开Safari开发选项卡中的允许远程自动化，Safari不需要安装WebDriv
+
+如果是其他平台其他浏览器要记得安装相应浏览器的driver\
 Driver 可以在这个网页下载：[点我](https://liushilive.github.io/github_selenium_drivers/index.html) \
 Chromium内核Edge浏览器就直接下这个 [Microsoft Edge Driver(Chromium)](https://developer.microsoft.com/zh-cn/microsoft-edge/tools/webdriver/)
 
@@ -58,7 +61,7 @@ self.driver = webdriver.Firefox()
 ```
 
 # 展望
-+ `beautifulsoup`优化速度
++ `BeautifulSoup`优化速度
 + 题目AC判断
 + 多线程
 
