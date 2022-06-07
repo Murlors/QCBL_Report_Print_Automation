@@ -116,6 +116,7 @@ class Qcbl:
         while True:
             tmp = sg.popup_get_text(message='请输入要打印的卷数，连续的用"-"(例588-598)，分散的用.(例588.589)',
                                     font=("微软雅黑", 16),
+                                    icon='icon.ico',
                                     keep_on_top=True,
                                     size=(30, 1)
                                     )
@@ -129,7 +130,7 @@ class Qcbl:
                 else:
                     begin, end = map(int, tmp.split('-'))
                     if end < begin or sum(1 for i in range(begin, end + 1) if i not in dictionary_volume) >= 1:
-                        sg.popup_error("卷数编号填写错误！", font=("微软雅黑", 16), keep_on_top=True)
+                        sg.popup_error("卷数编号填写错误！", font=("微软雅黑", 16), icon='icon.ico', keep_on_top=True)
                     else:
                         for i in range(begin, end + 1):
                             volume_list.append(i)
