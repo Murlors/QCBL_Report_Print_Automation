@@ -57,4 +57,9 @@ self.driver = webdriver.Chrome()
 self.driver = webdriver.Firefox()
 ```
 
+# 展望
++ `beautifulsoup`优化速度
++ 题目AC判断
++ 多线程
+
 因为比较懒，没有写注释，望谅解😭
