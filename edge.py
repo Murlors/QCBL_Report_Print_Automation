@@ -1,7 +1,8 @@
-import PySimpleGUI as sg
 import os.path
-import pdfkit
 import re
+
+import PySimpleGUI as sg
+import pdfkit
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
@@ -21,6 +22,10 @@ class Qcbl:
         self.options.add_experimental_option('excludeSwitches', ['enable-logging'])
         self.driver = webdriver.Edge(options=self.options)
         self.wait = WebDriverWait(self.driver, 5, 0.5)
+
+    def get_default_user(self):
+        with open('user.txt', 'r', encoding='utf-8') as fp:
+            self.username, self.password = fp.read().split(' ')
 
     def __del__(self):
         self.driver.quit()
@@ -58,23 +63,21 @@ class Qcbl:
 
     def report_print(self, url, locate, output):
         output = os.path.join(locate, output + '.pdf')
-        print(output)
         self.options_pdf['footer-left'] = url
         pdfkit.from_url(url, output, options=self.options_pdf)
 
-    def print_by_problem_id(self, problem_id, locate, method, course_id=0):
+    def print_by_problem_id(self, problem_id, locate, method="course", course_id=0):
         if method == "course":
-            problem_url = "http://10.132.246.246/judge/course/" + str(course_id) + "/judgelist/?problem=" + str(
-                problem_id) + "&userprofile=" + self.stu_id
+            problem_url = "http://10.132.246.246/judge/course/" + str(course_id) + "/judgelist/?problem=" +\
+                          str(problem_id) + "&userprofile=" + self.stu_id
             self.driver.get(problem_url)
             self.wait.until(EC.presence_of_element_located((By.XPATH, '/html/body/div[2]/div/div[2]/div[1]/table')))
             report_url = self.driver.find_element(
                 By.XPATH, '/html/body/div[2]/div/div[2]/div[1]/table/tbody/tr[1]/td[1]/a').\
                              get_attribute('href') + 'print_exp/'
-
         elif method == "id":
-            problem_url = "http://10.132.246.246/judge/judgelist/?problem=" + str(
-                problem_id) + "&userprofile=" + self.stu_id
+            problem_url = "http://10.132.246.246/judge/judgelist/?problem=" +\
+                          str(problem_id) + "&userprofile=" + self.stu_id
             self.driver.get(problem_url)
             self.wait.until(EC.presence_of_element_located((By.ID, 'problemStatus')))
             # self.wait.until(EC.presence_of_element_located((By.XPATH, '//*[@id="problemStatus"]/table/tbody/tr/td[1]/a')))
@@ -86,10 +89,11 @@ class Qcbl:
         self.wait.until(EC.title_contains('判题编号'))
         outputlist = self.driver.title.split(':')
         output = outputlist[0] + '_' + outputlist[1]
+        print(problem_id + " " + output + ".pdf")
         self.report_print(report_url, locate, output)
 
-    def by_problem_id(self, begin, end):
-        for i in range(begin, end + 1):
+    def by_problem_id(self, problem_list):
+        for i in problem_list:
             self.print_by_problem_id(i, self.path, "id")
 
     def by_volume(self, course_id):
@@ -110,24 +114,30 @@ class Qcbl:
                  }
             )
         while True:
-            tmp = sg.popup_get_text(message='请输入起始卷数编号和终止卷数编号，中间用"-"分开',
+            tmp = sg.popup_get_text(message='请输入要打印的卷数，连续的用"-"(例588-598)，分散的用.(例588.589)',
                                     font=("微软雅黑", 16),
                                     keep_on_top=True,
                                     size=(30, 1)
                                     )
-            if sum(1 for i in tmp if '-' in i) != 1:
-                sg.popup_error("卷数编号填写错误！", font=("微软雅黑", 16), keep_on_top=True)
+            volume_list = []
+            if sum(1 for i in tmp if '.' in i) >= 1:
+                volume_list = map(int, tmp.split('.'))
+                break
             else:
-                volume_begin, volume_end = tmp.split('-')
-                if int(volume_end) < int(volume_begin) or sum(
-                        1 for i in range(int(volume_begin), int(volume_end) + 1) if i not in dictionary_volume) >= 1:
-                    sg.popup_error("卷数编号填写错误！", font=("微软雅黑", 16), keep_on_top=True)
+                if sum(1 for i in tmp if '-' in i) != 1:
+                    sg.popup_error("卷数编号填写错误！", font=("微软雅黑", 16), icon='icon.ico', keep_on_top=True)
                 else:
-                    break
-        print('选定的启始卷数：%s，选定的终止卷数：%s' % (volume_begin, volume_end))
-        volume_begin = int(volume_begin)
-        volume_end = int(volume_end)
-        for t in range(volume_begin, volume_end + 1):
+                    begin, end = map(int, tmp.split('-'))
+                    if end < begin or sum(1 for i in range(begin, end + 1) if i not in dictionary_volume) >= 1:
+                        sg.popup_error("卷数编号填写错误！", font=("微软雅黑", 16), keep_on_top=True)
+                    else:
+                        for i in range(begin, end + 1):
+                            volume_list.append(i)
+                        break
+
+        print('选定的卷数:')
+        print(volume_list)
+        for t in volume_list:
             os.makedirs(os.path.join(self.path, dictionary_volume[t][1]), exist_ok=True)
             volume_url = dictionary_volume[t][0]
             self.driver.get(volume_url)
@@ -148,16 +158,19 @@ class Qcbl:
                                          course_id)
 
 
-class Base_GUI:
+class BaseGUI:
     def __init__(self):
+        self.my = Qcbl()
+        self.my.get_default_user()
         sg.theme('LightGrey1')
         self.font = ("微软雅黑", 16)
         self.flag = True
         self.way = None
         self.input = [[sg.Text('学号：', font=self.font),
-                       sg.InputText(key='_username_', font=self.font, size=(16, 1))],
+                       sg.InputText(key='_username_', default_text=self.my.username, font=self.font, size=(16, 1))],
                       [sg.Text('密码：', font=self.font),
-                       sg.InputText(key='_password_', password_char='*', font=self.font, size=(16, 1))]
+                       sg.InputText(key='_password_', default_text=self.my.password, password_char='*', font=self.font,
+                                    size=(16, 1))]
                       ]
         self.radio = sg.Frame(layout=[
             [sg.Radio('根据题号打印', group_id="_radio_", font=("微软雅黑", 14))],
@@ -173,9 +186,9 @@ class Base_GUI:
             title='开摆',
             layout=self.layout,
             keep_on_top=True,
+            finalize=True,
             icon='icon.ico',
         )
-        self.my = Qcbl()
 
     def run(self):
         while True:
@@ -185,19 +198,20 @@ class Base_GUI:
                     username = values['_username_']
                     password = values['_password_']
                     if username == '':
-                        sg.popup_error("请输入学号！", font=self.font, keep_on_top=True)
+                        sg.popup_error("请输入学号！", font=self.font, icon='icon.ico', keep_on_top=True, )
                         continue
                     if password == '':
-                        sg.popup_error("请输入密码！", font=self.font, keep_on_top=True)
+                        sg.popup_error("请输入密码！", font=self.font, icon='icon.ico', keep_on_top=True, )
                         continue
                     if len(username) != 11:
-                        sg.popup_error("用户名输错了！", font=self.font, keep_on_top=True)
+                        sg.popup_error("用户名输错了！", font=self.font, icon='icon.ico', keep_on_top=True, )
                         continue
                     self.my.login(username, password)
                     self.way = values[0]
                     self.my.path = sg.popup_get_folder(message='选择实验报告打印的位置：',
                                                        default_path=os.getcwd(),
                                                        font=self.font,
+                                                       icon='icon.ico',
                                                        keep_on_top=True,
                                                        size=(30, 1),
                                                        modal=False,
@@ -205,28 +219,38 @@ class Base_GUI:
                     self.flag = False
                 if self.way:
                     while True:
-                        tmp = sg.popup_get_text(message='请输入起始题目编号与终止题目编号，中间用"-"分开：',
+                        tmp = sg.popup_get_text(message='请输入要打印的题目编号，连续的用"-"(例588-598)，分散的用.(例588.589)',
                                                 font=self.font,
+                                                icon='icon.ico',
                                                 keep_on_top=True,
                                                 size=(30, 1)
                                                 )
-                        if sum(1 for i in tmp if '-' in i) != 1:
-                            sg.popup_error("题目编号编写错误！", font=self.font, keep_on_top=True)
+                        problem_list = []
+                        if sum(1 for i in tmp if '.' in i) >= 1:
+                            problem_list = map(int, tmp.split('.'))
+                            break
                         else:
-                            begin, end = tmp.split('-')
-                            if int(end) < int(begin):
-                                sg.popup_error("题目编号编写错误！", font=self.font, keep_on_top=True)
+                            if sum(1 for i in tmp if '-' in i) != 1:
+                                sg.popup_error("题目编号编写错误！", font=self.font, icon='icon.ico', keep_on_top=True)
                             else:
-                                break
+                                begin, end = map(int, tmp.split('-'))
+                                if end < begin:
+                                    sg.popup_error("题目编号编写错误！", font=self.font, icon='icon.ico', keep_on_top=True)
+                                else:
+                                    for i in range(begin, end + 1):
+                                        problem_list.append(i)
+                                    break
 
-                    print('选定的启始题目编号：%s，选定的终止题目编号：%s' % (begin, end))
-                    self.my.by_problem_id(int(begin), int(end))
+                    print('选定的题目编号:')
+                    print(problem_list)
+                    self.my.by_problem_id(problem_list)
                 elif not self.way:
                     course_id = sg.popup_get_text(message='1、数据结构(2021-2022-2)\n'
                                                           '2、程序设计课程设计(2021-2022-2)\n'
                                                           '如果要其他课程直接输入课程编号\n'
                                                           '速速选一个：',
                                                   font=self.font,
+                                                  icon='icon.ico',
                                                   keep_on_top=True,
                                                   size=(30, 1)
                                                   )
@@ -235,7 +259,7 @@ class Base_GUI:
                     elif course_id == '2':
                         course_id = '107'
                     self.my.by_volume(course_id)
-                sg.popup('打印结束啦，可以退出了', keep_on_top=True, font=self.font)
+                sg.popup('打印结束啦，可以退出了(也可以继续打印)', font=self.font, icon='icon.ico', keep_on_top=True, )
 
             if event == sg.WIN_CLOSED or event == '_exit_':
                 self.my.__del__()
@@ -245,5 +269,5 @@ class Base_GUI:
 
 
 if __name__ == '__main__':
-    table_gui = Base_GUI()
+    table_gui = BaseGUI()
     table_gui.run()
