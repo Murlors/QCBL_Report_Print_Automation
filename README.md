@@ -36,7 +36,7 @@ Windows用户就直接在官网下载安装：[点我](https://wkhtmltopdf.org/d
 
 如果要使用其他浏览器，在下列行数中进行修改即可
 
-如果是macOS使用Safari要先打开Safari开发选项卡中的允许远程自动化，Safari不需要安装WebDriv
+如果是macOS使用Safari要先打开Safari开发选项卡中的允许远程自动化，Safari不需要安装WebDrive
 
 如果是其他平台其他浏览器要记得安装相应浏览器的driver\
 Driver 可以在这个网页下载：[点我](https://liushilive.github.io/github_selenium_drivers/index.html) \
