@@ -27,6 +27,10 @@ class Qcbl:
     def __del__(self):
         self.driver.quit()
 
+    def get_default_user(self):
+        with open('user.txt', 'r', encoding='utf-8') as fp:
+            self.username, self.password = fp.read().split(' ')
+
     def login(self, username, password):
         self.username = username
         self.password = password
@@ -169,6 +173,10 @@ class BaseGUI:
             sg.popup_error("浏览器启动失败,更新WebDriver的版本！\n%s" % e.msg,
                            font=("微软雅黑", 16), icon='icon.ico', keep_on_top=True)
         else:
+            try:
+                self.my.get_default_user()
+            except Exception as e:
+                sg.popup_error("%s" % e, font=("微软雅黑", 16), icon='icon.ico', keep_on_top=True)
             sg.theme('LightGrey1')
             self.font = ("微软雅黑", 16)
             self.flag = True
@@ -207,15 +215,15 @@ class BaseGUI:
                     password = values['_password_']
                     try:
                         if username == '':
-                            sg.popup_error("请输入学号！", font=self.font, icon='icon.ico', keep_on_top=True, )
+                            sg.popup_error("请输入学号！", font=self.font, icon='icon.ico', keep_on_top=True)
                             continue
                         if password == '':
-                            sg.popup_error("请输入密码！", font=self.font, icon='icon.ico', keep_on_top=True, )
+                            sg.popup_error("请输入密码！", font=self.font, icon='icon.ico', keep_on_top=True)
                             continue
                         self.my.login(username, password)
                         self.my.get_stu_id()
                     except TimeoutError as e:
-                        sg.popup_error("%s" % e, font=self.font, icon='icon.ico', keep_on_top=True, )
+                        sg.popup_error("%s" % e, font=self.font, icon='icon.ico', keep_on_top=True)
                         continue
                     else:
                         self.my.path = sg.popup_get_folder(message='选择实验报告打印的位置：',
@@ -255,7 +263,7 @@ class BaseGUI:
                     try:
                         self.my.by_problem_id(problem_list)
                     except Exception as e:
-                        sg.popup_error("%s" % e, font=self.font, icon='icon.ico', keep_on_top=True, )
+                        sg.popup_error("%s" % e, font=self.font, icon='icon.ico', keep_on_top=True)
                         continue
                 elif not self.way:
                     course_id = sg.popup_get_text(message='1、数据结构(2021-2022-2)\n'
@@ -274,9 +282,9 @@ class BaseGUI:
                     try:
                         self.my.by_volume(course_id)
                     except Exception as e:
-                        sg.popup_error("%s" % e, font=self.font, icon='icon.ico', keep_on_top=True, )
+                        sg.popup_error("%s" % e, font=self.font, icon='icon.ico', keep_on_top=True)
                         continue
-                sg.popup('打印结束啦，可以退出了(也可以继续打印)', font=self.font, icon='icon.ico', keep_on_top=True, )
+                sg.popup('打印结束啦，可以退出了(也可以继续打印)', font=self.font, icon='icon.ico', keep_on_top=True)
 
             if event == sg.WIN_CLOSED or event == '_exit_':
                 self.my.__del__()
