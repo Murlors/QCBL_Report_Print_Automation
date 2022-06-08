@@ -19,8 +19,6 @@ class Qcbl:
         self.options_pdf = None
         self.config_pdf = None
         self.path = None
-        self.driver = None
-        self.wait = None
         self.driver = webdriver.Safari()
         self.wait = WebDriverWait(self.driver, 3.6, 0.25)
 
@@ -113,7 +111,8 @@ class Qcbl:
                      get_attribute('href'), datalist_volume[kk - 1][1]]
             })
         while True:
-            tmp = sg.popup_get_text(message='请输入要打印的卷数：\n连续的用"-"(例588-598)，分散的用.(例588.589)',
+            tmp = sg.popup_get_text(message='请输入要打印的卷数：\n'
+                                            '连续的用"-"(例588-598)，分散的用.(例588.589)',
                                     font=("微软雅黑", 16),
                                     keep_on_top=True,
                                     size=(30, 1)
@@ -226,7 +225,8 @@ class BaseGUI:
                 self.way = values[0]
                 if self.way:
                     while True:
-                        tmp = sg.popup_get_text(message='请输入要打印的题目编号：\n连续的用"-"(例588-598)，分散的用.(例588.589)',
+                        tmp = sg.popup_get_text(message='请输入要打印的题目编号：\n'
+                                                        '连续的用"-"(例588-598)，分散的用.(例588.589)',
                                                 font=self.font,
                                                 keep_on_top=True,
                                                 size=(30, 1)
