@@ -1,19 +1,15 @@
 # 千锤百炼实验报告自动化打印
+
 ## QCBL_Report_Print_Automation
 
-去 [这里](https://github.com/1595258509/QCBL_Report_Print_Automation/releases/) 下载
+下载地址：
+[https://github.com/1595258509/QCBL_Report_Print_Automation/releases/](https://github.com/1595258509/QCBL_Report_Print_Automation/releases/)
 
-`user.txt`文件中的是默认的学号和密码，可以在里面直接先输好\
+`user.json`文件中的是默认的学号和密码，可以在里面直接先输好\
 使用的话直接按照要求一步步来就行了\
 按课程打印中的卷数就是左边那一栏
 
-macOS 运行 `safari` 之前要先赋权：
-```shell
-chmod 777 path
-```
-> `path` 是 `safari` 的路径，可以直接拖到终端里
-
-**Python版本：3.9**
+## Python版本：3.9
 
 | 用到的python模块 |                    |
 | :--              | :--                |
@@ -24,49 +20,64 @@ chmod 777 path
 | selenium         | WEB自动化工具      |
 
 安装Python模块直接：
+
 ```shell
 pip install -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple/
 ```
->**-i** 后面是使用清华大学镜像源加速下载
+
+>`-i` 后面是使用清华大学镜像源加速下载
 
 ---
 
 pdfkit是基于wkhtmltopdf的python封装，所以需要先安装wkhtmltopdf\
 macOS用户可以直接使用Homebrew安装
+
 ```shell
 brew install wkhtmltopdf
 ```
-Windows用户就直接在官网下载安装：[点我](https://wkhtmltopdf.org/downloads.html)
+
+Windows用户就直接在官网下载安装：[https://wkhtmltopdf.org/downloads.html](https://wkhtmltopdf.org/downloads.html)
 
 ---
 
-如果要使用其他浏览器，在下列行数中进行修改即可
-
-如果是macOS使用Safari要先打开Safari开发选项卡中的允许远程自动化，Safari不需要安装WebDrive
-
-如果是其他平台其他浏览器要记得安装相应浏览器的driver\
-Driver 可以在这个网页下载：[点我](https://liushilive.github.io/github_selenium_drivers/index.html) \
-Chromium内核Edge浏览器就直接下这个 [Microsoft Edge Driver(Chromium)](https://developer.microsoft.com/zh-cn/microsoft-edge/tools/webdriver/)
+默认浏览器是Chromium内核的Edge浏览器，如果要使用其他浏览器，在下列行数中进行修改即可
 
 ```python
-self.options = webdriver.EdgeOptions()
-self.options.add_experimental_option('excludeSwitches', ['enable-logging'])
-self.driver = webdriver.Edge(options=self.options)
+from webdriver_manager.microsoft import EdgeChromiumDriverManager
 ```
-
-例如要改成Chrome浏览器，就改成这样
 
 ```python
-self.driver = webdriver.Chrome()
+self.driver = webdriver.ChromiumEdge(EdgeChromiumDriverManager(cache_valid_range=7).install())
 ```
-> 上面两行可以直接省略，Edge写这个是为了清除掉Edge Driver默认输出的调试信息
+
+如果是macOS使用Safari要先打开Safari开发选项卡中的允许远程自动化，Safari不需要安装WebDriver,但是需要修改上述代码成
+
+```python
+self.driver = webdriver.Safari()
+```
+
+若要改成Chrome浏览器
+
+```python
+from webdriver_manager.chrome import ChromeDriverManager
+```
+
+```python
+self.driver = webdriver.Chrome(ChromeDriverManager(cache_valid_range=7).install())
+```
 
 以此类推，改成Firefox
+
 ```python
-self.driver = webdriver.Firefox()
+from webdriver_manager.firefox import DriverManager
 ```
 
-# 展望
+```python
+self.driver = webdriver.Firefox(DriverManager(cache_valid_range=7).install())
+```
+
+## 展望
+
 + `BeautifulSoup`优化速度
 + 题目AC判断
 + 多线程
