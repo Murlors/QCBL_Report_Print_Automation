@@ -1,17 +1,20 @@
 import json
 import os
 import re
+from concurrent.futures import ThreadPoolExecutor
 
 import PySimpleGUI as sg
 import pdfkit
+import requests
+from bs4 import BeautifulSoup
 from selenium import webdriver
 from selenium.common import exceptions
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as ec
 from selenium.webdriver.support.wait import WebDriverWait
+from tqdm import tqdm
 from webdriver_manager.microsoft import EdgeChromiumDriverManager
 
-from webdriver_manager.firefox import DriverManager
 
 class QCBL:
     BASE_URL = 'http://10.132.246.246'
@@ -21,9 +24,9 @@ class QCBL:
         self.username = None
         self.stu_id = None
         self.options_pdf = None
-        self.path = None
+        self.print_path = None
         self.print_type = 'print_exp/'
-        self.driver = webdriver.Firefox(DriverManager(cache_valid_range=7).install())
+        self.driver = webdriver.Edge(EdgeChromiumDriverManager(cache_valid_range=7).install())
         self.wait = WebDriverWait(self.driver, 3, 0.5)
 
     def __del__(self):
@@ -45,7 +48,7 @@ class QCBL:
         self.password = password
         try:
             self.driver.get(self.BASE_URL)
-            self.wait.until(method=ec.title_contains("匿名用户"), message="超时啦")
+            self.wait.until(method=ec.title_contains("匿名用户"))
             self.driver.find_element(By.NAME, "username").send_keys(self.username)
             self.driver.find_element(By.NAME, "password").send_keys(self.password)
             self.driver.find_element(By.XPATH, "//form[@class='navbar-form pull-right']").submit()
@@ -71,40 +74,56 @@ class QCBL:
         self.stu_id = self.driver.title.split("/")[2]
         print("当前用户的ID属性值为：", self.stu_id)
 
-    def print_report(self, url, locate, output):
-        output = os.path.join(locate, output + '.pdf')
-        print(output)
-        self.options_pdf['footer-left'] = url
-        pdfkit.from_url(url, output, options=self.options_pdf)
-
-    def print_by_problem_id(self, problem_id, path, method="course", course_id=0):
-        if method == 'course':
-            problem_url = f'{self.BASE_URL}/judge/course/{course_id}/judgelist/' \
-                          f'?problem={problem_id}&userprofile={self.stu_id}'
-            self.driver.get(problem_url)
-            self.wait.until(ec.presence_of_element_located(
-                (By.XPATH, '/html/body/div[2]/div/div[2]/div[1]/table')), message="超时啦")
-            report_url = self.driver.find_element(
-                By.XPATH, '/html/body/div[2]/div/div[2]/div[1]/table/tbody/tr[1]/td[1]/a'
-            ).get_attribute('href') + self.print_type
-        elif method == 'id':
-            problem_url = f'{self.BASE_URL}/judge/judgelist/?problem={problem_id}&userprofile={self.stu_id}'
-            self.driver.get(problem_url)
-            self.wait.until(ec.presence_of_element_located((By.ID, 'problemStatus')), message="超时啦")
-            report_url = self.driver.find_element(
-                By.XPATH, '//*[@id="problemStatus"]/table/tbody/tr/td[1]/a'
-            ).get_attribute('href') + self.print_type
-        else:
+    def print_by_problem_id(self, problem_url, path, method):
+        # TO BE verified: 将selenium修改为request
+        response = requests.get(problem_url, cookies=self.options_pdf['cookie'])
+        soup = BeautifulSoup(response.text, 'lxml')
+        table = soup.find('table', class_='table table-hover').find('tbody')
+        rows = table.find_all('tr')
+        report_url = None
+        for row in rows:
+            columns = row.find_all('td')
+            if columns[5].text.strip() == '答案正确':
+                report_url = f"{columns[0].find('a').get('href')}{self.print_type}"
+                break
+        # self.driver.get(problem_url)
+        # if method == 'course':
+        #     self.wait.until(ec.presence_of_element_located((By.XPATH, '/html/body/div[2]/div/div[2]/div[1]/table')))
+        #     report_url = self.driver.find_element(
+        #         By.XPATH, '/html/body/div[2]/div/div[2]/div[1]/table/tbody/tr[1]/td[1]/a'
+        #     ).get_attribute('href') + self.print_type
+        # elif method == 'id':
+        #     self.wait.until(ec.presence_of_element_located((By.ID, 'problemStatus')))
+        #     report_url = self.driver.find_element(
+        #         By.XPATH, '//*[@id="problemStatus"]/table/tbody/tr/td[1]/a'
+        #     ).get_attribute('href') + self.print_type
+        # else:
+        #     return
+        if report_url is None:
             return
         self.driver.get(report_url)
-        self.wait.until(ec.title_contains('判题编号'), message="超时啦")
-        output_list = self.driver.title.split(':')
-        output = output_list[0] + '_' + output_list[1]
-        self.print_report(report_url, path, output)
+        self.wait.until(ec.title_contains('判题编号'))
+        # 注意验证！
+        # outputs = self.driver.title.split(':')
+        outputs = response.text.title().split(':')
+        output_path = os.path.join(path, f'{outputs[0]}_{outputs[1]}.pdf')
+        self.options_pdf['footer-left'] = report_url
+        pdfkit.from_url(report_url, output_path, options=self.options_pdf)
+        return output_path
 
     def by_problem_id(self, problem_list):
-        for i in problem_list:
-            self.print_by_problem_id(i, self.path, "id")
+        with ThreadPoolExecutor(len(problem_list)) as executor:
+            with tqdm(total=len(problem_list), desc=self.print_type.split('/')[0]) as pbar:
+                args = [{
+                    'problem_url': f'{self.BASE_URL}/judge/judgelist/?problem={problem_id}&userprofile={self.stu_id}',
+                    'path': self.print_path,
+                    'method': 'id'
+                } for problem_id in problem_list]
+                for result in executor.map(self.print_by_problem_id, args):
+                    print(result)
+                    pbar.update()
+        # for i in problem_list:
+        #     self.print_by_problem_id(i, self.print_path, "id")
 
     def by_volume(self, course_id):
         course_url = f'{self.BASE_URL}/course/{course_id}/detail/'
@@ -143,15 +162,26 @@ class QCBL:
                     break
         print(f'选定的卷数:{volume_list}')
         for t in volume_list:
-            os.makedirs(os.path.join(self.path, dictionary_volume[t][1]), exist_ok=True)
-            print_path = os.path.join(self.path, dictionary_volume[t][1])
+            os.makedirs(os.path.join(self.print_path, dictionary_volume[t][1]), exist_ok=True)
+            print_path = os.path.join(self.print_path, dictionary_volume[t][1])
             volume_url = dictionary_volume[t][0]
             self.driver.get(volume_url)
-            self.wait.until(ec.presence_of_all_elements_located((By.ID, 'problemStatus')), message="超时啦")
-            problems = []
+            self.wait.until(ec.presence_of_all_elements_located((By.ID, 'problemStatus')))
+            problem_list = []
             rows = [tmp_p for tmp_p in self.driver.find_elements(By.CSS_SELECTOR, '.table>tbody>tr') if tmp_p.text]
             for i in range(0, len(rows)):
-                problems.append(self.driver.find_element(
+                problem_list.append(self.driver.find_element(
                     By.XPATH, f'//*[@id="problemStatus"]/table/tbody/tr[{i + 1}]/td[2]').text)
-            for problem_id in problems:
-                self.print_by_problem_id(problem_id, print_path, "course", course_id)
+            with ThreadPoolExecutor(len(problem_list)) as executor:
+                with tqdm(total=len(problem_list), desc=self.print_type.split('/')[0]) as pbar:
+                    args = [{
+                        'problem_url': f'{self.BASE_URL}/judge/course/{course_id}/judgelist/'
+                                       f'?problem={problem_id}&userprofile={self.stu_id}',
+                        'path': print_path,
+                        'method': 'course'
+                    } for problem_id in problem_list]
+                    for result in executor.map(self.print_by_problem_id, args):
+                        print(result)
+                        pbar.update()
+            # for problem_id in problem_list:
+            #     self.print_by_problem_id(problem_id, print_path, "course", course_id)
