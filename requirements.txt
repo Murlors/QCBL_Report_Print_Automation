@@ -2,4 +2,3 @@ pdfkit
 PySimpleGUI
 requests
 beautifulsoup4
-tqdm

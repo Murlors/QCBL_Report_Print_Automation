@@ -13,15 +13,12 @@
 
 ## Python版本>3.7
 
-| 用到的python模块 | 用途               |
-| :--              | :--             |
-| os               | 用于处理文件和目录 |
-| re               | 用于处理正则表达式 |
-| PySimpleGUI      | GUI界面的搭建     |
-| pdfkit           | 生成PDF          |
-| requests         | 用于发送HTTP请求   |
-| beautifulsoup4   | 用于解析HTML      |
-| tqdm             | 进度条            |
+| 用到的python模块  | 用途             |
+| :--             | :--             |
+| `PySimpleGUI`   | GUI界面的搭建     |
+| `pdfkit`        | 生成PDF          |
+| `requests`      | 用于发送HTTP请求   |
+| `beautifulsoup4`| 用于解析HTML      |
 
 安装Python模块直接：
 

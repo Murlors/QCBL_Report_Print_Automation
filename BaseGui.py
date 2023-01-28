@@ -121,8 +121,7 @@ class BaseGUI:
                     self.by_problem_id()
                 else:
                     self.by_volume_id()
-                sg.popup('打印结束啦,可以退出了(也可以继续打印)',
-                         font=self.font_minor, icon='icon.ico')
+                sg.popup('打印结束啦,可以退出了(也可以继续打印)', font=self.font_minor, icon='icon.ico')
 
             if event == sg.WIN_CLOSED or event == '_exit_':
                 break
