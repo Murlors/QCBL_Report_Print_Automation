@@ -137,18 +137,18 @@ class QCBL:
         while True:
             input_v = sg.popup_get_text(
                 message='请输入要打印的卷数：\n连续的用"-"(例588-598),分散的用"."(例588.589)',
-                font=("微软雅黑", 12), icon='icon.ico', keep_on_top=True, size=(30, 1)
+                font=("微软雅黑", 12), icon='icon.ico', size=(30, 1)
             )
             if sum(1 for i in input_v if '-' in i) != 1:
                 input_volume = list(map(int, input_v.split('.')))
                 if sum(1 for i in input_volume if i not in volume_dict) >= 1:
-                    sg.popup_error("卷数编号填写错误！", font=("微软雅黑", 12), icon='icon.ico', keep_on_top=True)
+                    sg.popup_error("卷数编号填写错误！", font=("微软雅黑", 12), icon='icon.ico')
                 else:
                     break
             else:
                 begin, end = list(map(int, input_v.split('-')))
                 if end < begin or sum(1 for i in range(begin, end + 1) if i not in volume_dict) >= 1:
-                    sg.popup_error("卷数编号填写错误！", font=("微软雅黑", 12), icon='icon.ico', keep_on_top=True)
+                    sg.popup_error("卷数编号填写错误！", font=("微软雅黑", 12), icon='icon.ico')
                 else:
                     input_volume = [i for i in range(begin, end + 1)]
                     break

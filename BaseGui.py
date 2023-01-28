@@ -30,26 +30,26 @@ class BaseGUI:
                         sg.Exit('退出', key='_exit_', font=self.font_minor, size=(8, 1))],
                        [sg.Output(size=(32, 5), font=self.font_main, background_color='light gray')]
                        ]
-        self.window = sg.Window(layout=self.layout, title='开摆', icon='icon.ico', keep_on_top=True, finalize=True)
+        self.window = sg.Window(layout=self.layout, title='开摆', icon='icon.ico')
         self.set_print_path_flag = False
 
     def set_print_path(self, username, password):
         try:
             Thread(target=self.qcbl.login, args=(username, password)).start()
         except TimeoutError as e:
-            sg.popup_error("%s" % e, font=self.font_minor, icon='icon.ico', keep_on_top=True)
+            sg.popup_error("%s" % e, font=self.font_minor, icon='icon.ico')
             return
         else:
             self.qcbl.print_path = sg.popup_get_folder(
                 message='选择实验报告打印的位置:', default_path=os.path.join(os.getcwd(), 'print'),
-                font=self.font_minor, icon='icon.ico', keep_on_top=True, size=(30, 1), modal=False
+                font=self.font_minor, icon='icon.ico', size=(30, 1), modal=False
             )
             self.set_print_path_flag = True
 
     def set_print_type(self):
         print_type = sg.popup_get_text(
             message='选择要打印的类型:\n1、生成实验报告\n2、生成作业\n',
-            font=self.font_minor, icon='icon.ico', keep_on_top=True, size=(30, 1)
+            font=self.font_minor, icon='icon.ico', size=(30, 1)
         )
         if print_type.isdigit():
             if print_type == '1':
@@ -61,7 +61,7 @@ class BaseGUI:
         while True:
             tmp = sg.popup_get_text(
                 message='请输入要打印的题目编号:\n连续的用"-"(例588-598),分散的用"."(例588.589)',
-                font=self.font_minor, icon='icon.ico', keep_on_top=True, size=(30, 1)
+                font=self.font_minor, icon='icon.ico', size=(30, 1)
             )
             if sum(1 for i in tmp if '-' in i) != 1:
                 problem_list = list(map(int, tmp.split('.')))
@@ -70,7 +70,7 @@ class BaseGUI:
                 begin, end = list(map(int, tmp.split('-')))
                 if end < begin:
                     sg.popup_error(
-                        "题目编号编写错误！", font=self.font_minor, icon='icon.ico', keep_on_top=True
+                        "题目编号编写错误！", font=self.font_minor, icon='icon.ico'
                     )
                 else:
                     problem_list = [i for i in range(begin, end + 1)]
@@ -81,7 +81,7 @@ class BaseGUI:
         course_id = sg.popup_get_text(
             message='1、数据结构(2021-2022-2)\n2、程序设计课程设计(2021-2022-2)\n'
                     '如果要其他课程直接输入课程编号\n速速选一个:',
-            font=self.font_minor, icon='icon.ico', keep_on_top=True, size=(30, 1)
+            font=self.font_minor, icon='icon.ico', size=(30, 1)
         )
         if course_id == '1':
             course_id = '108'
@@ -95,7 +95,7 @@ class BaseGUI:
         try:
             Thread(target=self.qcbl.by_problem_id, args=(problem_list,)).start()
         except Exception as e:
-            sg.popup_error("%s" % e, font=self.font_minor, icon='icon.ico', keep_on_top=True)
+            sg.popup_error("%s" % e, font=self.font_minor, icon='icon.ico')
 
     def by_volume_id(self):
         course_id = self.get_volume_id()
@@ -103,7 +103,7 @@ class BaseGUI:
         try:
             Thread(target=self.qcbl.by_volume, args=(course_id,)).start()
         except Exception as e:
-            sg.popup_error("%s" % e, font=self.font_minor, icon='icon.ico', keep_on_top=True)
+            sg.popup_error("%s" % e, font=self.font_minor, icon='icon.ico')
 
     def run(self):
         while True:
@@ -120,7 +120,7 @@ class BaseGUI:
                 else:
                     self.by_volume_id()
                 sg.popup('打印结束啦,可以退出了(也可以继续打印)',
-                         font=self.font_minor, icon='icon.ico', keep_on_top=True)
+                         font=self.font_minor, icon='icon.ico')
 
             if event == sg.WIN_CLOSED or event == '_exit_':
                 break
