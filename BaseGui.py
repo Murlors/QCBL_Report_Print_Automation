@@ -1,4 +1,5 @@
 import os
+from threading import Thread
 
 import PySimpleGUI as sg
 
@@ -31,7 +32,6 @@ class BaseGUI:
                        [sg.Output(size=(32, 5), font=self.font_main, background_color='light gray')]
                        ]
         self.window = sg.Window(layout=self.layout, title='开摆', icon='icon.ico', keep_on_top=True, finalize=True)
-        self.run()
 
     def run(self):
         set_location_flag = True
@@ -42,14 +42,12 @@ class BaseGUI:
                     username = values['_username_']
                     password = values['_password_']
                     try:
-                        self.qcbl.login(username, password)
-                        self.qcbl.get_stu_id()
-                        self.qcbl.set_default_user()
+                        Thread(target=self.qcbl.login, args=(username, password)).start()
                     except TimeoutError as e:
                         sg.popup_error("%s" % e, font=self.font_minor, icon='icon.ico', keep_on_top=True)
                         # continue
                     else:
-                        self.qcbl.path = sg.popup_get_folder(
+                        self.qcbl.print_path = sg.popup_get_folder(
                             message='选择实验报告打印的位置:', default_path=os.path.join(os.getcwd(), 'print'),
                             font=self.font_minor, icon='icon.ico', keep_on_top=True, size=(30, 1), modal=False
                         )
@@ -84,7 +82,7 @@ class BaseGUI:
                                 break
                     print(f'选定的题目编号:{problem_list}')
                     try:
-                        self.qcbl.by_problem_id(problem_list)
+                        Thread(target=self.qcbl.by_problem_id, args=problem_list).start()
                     except Exception as e:
                         sg.popup_error("%s" % e, font=self.font_minor, icon='icon.ico', keep_on_top=True)
                         continue
@@ -99,7 +97,7 @@ class BaseGUI:
                     elif course_id == '2':
                         course_id = '107'
                     try:
-                        self.qcbl.by_volume(course_id)
+                        Thread(target=self.qcbl.by_volume, args=course_id).start()
                     except Exception as e:
                         sg.popup_error("%s" % e, font=self.font_minor, icon='icon.ico', keep_on_top=True)
                         continue
@@ -107,7 +105,6 @@ class BaseGUI:
                          keep_on_top=True)
 
             if event == sg.WIN_CLOSED or event == '_exit_':
-                self.qcbl.__del__()
                 break
 
         self.window.close()
@@ -115,3 +112,4 @@ class BaseGUI:
 
 if __name__ == '__main__':
     table_gui = BaseGUI()
+    table_gui.run()

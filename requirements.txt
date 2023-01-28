@@ -1,4 +1,5 @@
 pdfkit
-selenium
 PySimpleGUI
-webdriver-manager
+requests
+beautifulsoup4
+tqdm
