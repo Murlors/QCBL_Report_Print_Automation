@@ -37,7 +37,7 @@ class QCBL:
     def set_default_user(self):
         with open("user.json", "w") as f:
             user = {"username": self.username, "password": self.password}
-            json.dump(user, f)
+            json.dump(user, f, indent=4)
 
     def set_options_pdfkit(self, cookies):
         self.options_pdf = {
