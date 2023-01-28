@@ -93,6 +93,7 @@ class BaseGUI:
         problem_list = self.get_problem_id()
         print(f'选定的题目编号:{problem_list}')
         try:
+            sg.one_line_progress_meter('正在打印', 0, 20)
             Thread(target=self.qcbl.by_problem_id, args=(problem_list,)).start()
         except Exception as e:
             sg.popup_error("%s" % e, font=self.font_minor, icon='icon.ico')
@@ -101,6 +102,7 @@ class BaseGUI:
         course_id = self.get_volume_id()
         print(f'选定的课程编号:{course_id}')
         try:
+            sg.one_line_progress_meter('正在打印', 0, 20)
             Thread(target=self.qcbl.by_volume, args=(course_id,)).start()
         except Exception as e:
             sg.popup_error("%s" % e, font=self.font_minor, icon='icon.ico')

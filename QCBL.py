@@ -8,7 +8,6 @@ import PySimpleGUI as sg
 import pdfkit
 import requests
 from bs4 import BeautifulSoup
-from tqdm import tqdm
 
 
 class QCBL:
@@ -86,15 +85,17 @@ class QCBL:
         return output_path
 
     def by_problem_id(self, problem_list):
+        sg.one_line_progress_meter('正在打印', 0, len(problem_list), self.print_type.split('/')[0])
+        i = 0
         with ThreadPoolExecutor(len(problem_list)) as executor:
-            with tqdm(total=len(problem_list), desc=self.print_type.split('/')[0]) as pbar:
-                args = [{
-                    'problem_url': f'{self.BASE_URL}/judge/judgelist/?problem={problem_id}&userprofile={self.stu_id}',
-                    'path': self.print_path
-                } for problem_id in problem_list]
-                for result in executor.map(self.print_by_problem_id, args):
-                    print(result)
-                    pbar.update()
+            args = [{
+                'problem_url': f'{self.BASE_URL}/judge/judgelist/?problem={problem_id}&userprofile={self.stu_id}',
+                'path': self.print_path
+            } for problem_id in problem_list]
+            for result in executor.map(self.print_by_problem_id, args):
+                i += 1
+                sg.one_line_progress_meter('正在打印', i, len(problem_list),
+                                           self.print_type.split('/')[0], f'打印完成:{result}')
 
     def by_volume(self, course_id):
         course_url = f'{self.BASE_URL}/course/{course_id}/detail/'
@@ -121,16 +122,19 @@ class QCBL:
             rows = table.find_all('tr')
             problems = [row.find_all('td') for row in rows]
             problem_list = [int(re.findall(r"\d+\.?\d*", problem[1])[0]) for problem in problems]
+
+            sg.one_line_progress_meter('正在打印', 0, len(problem_list), self.print_type.split('/')[0])
+            i = 0
             with ThreadPoolExecutor(len(problem_list)) as executor:
-                with tqdm(total=len(problem_list), desc=self.print_type.split('/')[0]) as pbar:
-                    args = [{
-                        'problem_url': f'{self.BASE_URL}/judge/course/{course_id}/judgelist/'
-                                       f'?problem={problem_id}&userprofile={self.stu_id}',
-                        'path': print_path
-                    } for problem_id in problem_list]
-                    for result in executor.map(self.print_by_problem_id, args):
-                        print(result)
-                        pbar.update()
+                args = [{
+                    'problem_url': f'{self.BASE_URL}/judge/course/{course_id}/judgelist/'
+                                   f'?problem={problem_id}&userprofile={self.stu_id}',
+                    'path': self.print_path
+                } for problem_id in problem_list]
+                for result in executor.map(self.print_by_problem_id, args):
+                    i += 1
+                    sg.one_line_progress_meter('正在打印', i, len(problem_list),
+                                               self.print_type.split('/')[0], f'打印完成:{result}')
 
     @staticmethod
     def get_input(volume_dict):
