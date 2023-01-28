@@ -9,15 +9,19 @@
 使用的话直接按照要求一步步来就行了\
 按课程打印中的卷数就是左边那一栏
 
-## Python版本：3.9
+现仅支持内网环境下使用
 
-| 用到的python模块 |                    |
-| :--              | :--                |
+## Python版本>3.7
+
+| 用到的python模块 | 用途               |
+| :--              | :--             |
 | os               | 用于处理文件和目录 |
 | re               | 用于处理正则表达式 |
-| PySimpleGUI      | GUI界面的搭建      |
-| pdfkit           | 生成PDF            |
-| selenium         | WEB自动化工具      |
+| PySimpleGUI      | GUI界面的搭建     |
+| pdfkit           | 生成PDF          |
+| requests         | 用于发送HTTP请求   |
+| beautifulsoup4   | 用于解析HTML      |
+| tqdm             | 进度条            |
 
 安装Python模块直接：
 
@@ -38,48 +42,12 @@ brew install wkhtmltopdf
 
 Windows用户就直接在官网下载安装：[https://wkhtmltopdf.org/downloads.html](https://wkhtmltopdf.org/downloads.html)
 
----
-
-默认浏览器是Chromium内核的Edge浏览器，如果要使用其他浏览器，在下列行数中进行修改即可
-
-```python
-from webdriver_manager.microsoft import EdgeChromiumDriverManager
-```
-
-```python
-self.driver = webdriver.ChromiumEdge(EdgeChromiumDriverManager(cache_valid_range=7).install())
-```
-
-如果是macOS使用Safari要先打开Safari开发选项卡中的允许远程自动化，Safari不需要安装WebDriver,但是需要修改上述代码成
-
-```python
-self.driver = webdriver.Safari()
-```
-
-若要改成Chrome浏览器
-
-```python
-from webdriver_manager.chrome import ChromeDriverManager
-```
-
-```python
-self.driver = webdriver.Chrome(ChromeDriverManager(cache_valid_range=7).install())
-```
-
-以此类推，改成Firefox
-
-```python
-from webdriver_manager.firefox import DriverManager
-```
-
-```python
-self.driver = webdriver.Firefox(DriverManager(cache_valid_range=7).install())
-```
-
 ## 展望
 
-+ `BeautifulSoup`优化速度
-+ 题目AC判断
-+ 多线程
+[x] `BeautifulSoup`处理表格\
+[x] 题目AC判断\
+[x] 并发打印\
+[ ] WebVPN登录\
+[ ] 界面优化
 
 因为比较懒，没有写注释，望谅解😭
