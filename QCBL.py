@@ -4,7 +4,6 @@ import re
 from concurrent.futures import ThreadPoolExecutor
 from threading import Thread
 
-import PySimpleGUI as sg
 import pdfkit
 import requests
 from bs4 import BeautifulSoup
@@ -14,6 +13,7 @@ class QCBL:
     BASE_URL = 'http://10.132.246.246'
 
     def __init__(self):
+        self.window = None
         self.cookies = None
         self.password = None
         self.username = None
@@ -21,6 +21,7 @@ class QCBL:
         self.options_pdf = None
         self.print_path = None
         self.print_type = 'print_exp/'
+        self.is_login = False
 
     def get_default_user(self):
         with open("user.json", "r") as f:
@@ -38,6 +39,9 @@ class QCBL:
             user = {"username": self.username, "password": self.password}
             json.dump(user, f, indent=4)
 
+    def set_sg_window(self, window):
+        self.window = window
+
     def set_options_pdfkit(self, cookies):
         self.options_pdf = {
             'page-size': 'A4',
@@ -53,22 +57,25 @@ class QCBL:
         # TO BE verified:
         self.username = username
         self.password = password
-        response = requests.get(self.BASE_URL)
+        response = requests.get(self.BASE_URL, timeout=4)
         cookies = response.cookies.get_dict()
         data = {
             'csrfmiddlewaretoken': cookies['csrftoken'],
             'username': username,
             'password': password
         }
-        response = requests.post(f'{self.BASE_URL}/user/logincheck/', data=data, cookies=cookies)
+        response = requests.post(f'{self.BASE_URL}/user/logincheck/', data=data, cookies=cookies, timeout=4)
         self.cookies = response.cookies.get_dict()
         Thread(target=self.set_options_pdfkit, args=cookies).start()
         Thread(target=self.get_stu_id).start()
         Thread(target=self.set_default_user).start()
+        if self.cookies is not None and 'sessionid' in self.cookies:
+            self.window.write_event_value('_login_success_', True)
 
     def print_by_problem_id(self, problem_url, path):
         # TO BE verified: 将selenium修改为request
         response = requests.get(problem_url, cookies=self.cookies)
+
         soup = BeautifulSoup(response.text, 'lxml')
         table = soup.find('table', class_='table table-hover').find('tbody')
         rows = table.find_all('tr')
@@ -78,29 +85,39 @@ class QCBL:
         if report_url is None:
             return
         response = requests.get(report_url, cookies=self.cookies)
+
         output = re.findall(r"<title>(.*?)</title>", response.text)[0].replace(':', '_').strip()
         output_path = os.path.join(path, f'{output}.pdf')
         self.options_pdf['footer-left'] = report_url
         pdfkit.from_url(report_url, output_path, options=self.options_pdf)
         return output_path
 
-    def by_problem_id(self, problem_list):
-        sg.one_line_progress_meter('正在打印', 0, len(problem_list), self.print_type.split('/')[0])
-        i = 0
+    def by_problem_id(self, problem_list, course_id=-1):
         with ThreadPoolExecutor(len(problem_list)) as executor:
+            progress = 0
+            self.window.write_event_value(
+                '_print_progress_', {'progress': progress, 'len_of_problem': len(problem_list), 'result': None})
+
             args = [{
-                'problem_url': f'{self.BASE_URL}/judge/judgelist/?problem={problem_id}&userprofile={self.stu_id}',
+                'problem_url':
+                    f'{self.BASE_URL}/judge/'
+                    f'course/{course_id}/' if course_id != -1 else ''
+                    f'judgelist/?problem={problem_id}&userprofile={self.stu_id}',
                 'path': self.print_path
             } for problem_id in problem_list]
+
             for result in executor.map(self.print_by_problem_id, args):
-                i += 1
-                sg.one_line_progress_meter('正在打印', i, len(problem_list),
-                                           self.print_type.split('/')[0], f'打印完成:{result}')
+                progress += 1
+                self.window.write_event_value(
+                    '_print_progress_', {'progress': progress, 'len_of_problem': len(problem_list), 'result': result})
+
+        self.window.write_event_value('_print_success_', True)
 
     def by_volume(self, course_id):
         course_url = f'{self.BASE_URL}/course/{course_id}/detail/'
         # TO BE verified: 将selenium修改为request
         response = requests.get(course_url, cookies=self.cookies)
+
         soup = BeautifulSoup(response.text, 'lxml')
         table = soup.find('table', class_='table table-hover').find('tbody')
         rows = table.find_all('tr')
@@ -110,51 +127,30 @@ class QCBL:
                             'href': volume[1].find('a').get('href')}
                        for volume in volumes}
 
-        input_volume = self.get_input(volume_dict)
+        input_volume = self.get_input_volume(volume_dict)
 
         for volume in input_volume:
             print_path = os.path.join(self.print_path, volume_dict[volume]['text'])
             os.makedirs(print_path, exist_ok=True)
+
             volume_url = volume_dict[volume]['href']
             response = requests.get(volume_url, cookies=self.cookies)
+
             soup = BeautifulSoup(response.text, 'lxml')
             table = soup.find('table', class_='table table-hover').find('tbody')
             rows = table.find_all('tr')
             problems = [row.find_all('td') for row in rows]
             problem_list = [int(re.findall(r"\d+\.?\d*", problem[1])[0]) for problem in problems]
 
-            sg.one_line_progress_meter('正在打印', 0, len(problem_list), self.print_type.split('/')[0])
-            i = 0
-            with ThreadPoolExecutor(len(problem_list)) as executor:
-                args = [{
-                    'problem_url': f'{self.BASE_URL}/judge/course/{course_id}/judgelist/'
-                                   f'?problem={problem_id}&userprofile={self.stu_id}',
-                    'path': self.print_path
-                } for problem_id in problem_list]
-                for result in executor.map(self.print_by_problem_id, args):
-                    i += 1
-                    sg.one_line_progress_meter('正在打印', i, len(problem_list),
-                                               self.print_type.split('/')[0], f'打印完成:{result}')
+            self.by_problem_id(problem_list, course_id)
 
-    @staticmethod
-    def get_input(volume_dict):
+    def get_input_volume(self, volume_dict):
+        self.window.write_event_value('_get_input_volume_', volume_dict)
+
         while True:
-            input_v = sg.popup_get_text(
-                message='请输入要打印的卷数：\n连续的用"-"(例588-598),分散的用"."(例588.589)',
-                font=("微软雅黑", 12), icon='icon.ico', size=(30, 1)
-            )
-            if sum(1 for i in input_v if '-' in i) != 1:
-                input_volume = list(map(int, input_v.split('.')))
-                if sum(1 for i in input_volume if i not in volume_dict) >= 1:
-                    sg.popup_error("卷数编号填写错误！", font=("微软雅黑", 12), icon='icon.ico')
-                else:
-                    break
-            else:
-                begin, end = list(map(int, input_v.split('-')))
-                if end < begin or sum(1 for i in range(begin, end + 1) if i not in volume_dict) >= 1:
-                    sg.popup_error("卷数编号填写错误！", font=("微软雅黑", 12), icon='icon.ico')
-                else:
-                    input_volume = [i for i in range(begin, end + 1)]
-                    break
-        print(f'选定的卷数:{input_volume}')
-        return input_volume
+            event, values = self.window.read()
+
+            if event == '_input_volume_':
+                input_volume = values[event]
+                print(f'选定的卷数:{input_volume}')
+                return input_volume
