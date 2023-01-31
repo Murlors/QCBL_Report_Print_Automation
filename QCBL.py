@@ -24,15 +24,16 @@ class QCBL:
         self.is_login = False
 
     def get_default_user(self):
-        with open("user.json", "r") as f:
-            user = json.load(f)  # 加载学号和密码
-            self.username = user["username"]
-            self.password = user["password"]
+        if os.path.exists("user.json"):
+            with open("user.json", "r") as f:
+                user = json.load(f)  # 加载学号和密码
+                self.username = user["username"]
+                self.password = user["password"]
 
     def get_stu_id(self):
         response = requests.get(f'{self.BASE_URL}', cookies=self.cookies)
         self.stu_id = int(re.findall(r'<a href="/user/(\d+)/detail/" class="navbar-link">.*</a>', response.text)[0]) + 4
-        print("当前用户的ID属性值为：", self.stu_id)
+        print(f"当前用户的ID属性值为: {self.stu_id}")
 
     def set_default_user(self):
         with open("user.json", "w") as f:
@@ -66,10 +67,10 @@ class QCBL:
         }
         response = requests.post(f'{self.BASE_URL}/user/logincheck/', data=data, cookies=cookies, timeout=4)
         self.cookies = response.cookies.get_dict()
-        Thread(target=self.set_options_pdfkit, args=cookies).start()
-        Thread(target=self.get_stu_id).start()
-        Thread(target=self.set_default_user).start()
         if self.cookies is not None and 'sessionid' in self.cookies:
+            Thread(target=self.get_stu_id).start()
+            Thread(target=self.set_options_pdfkit, args=cookies).start()
+            Thread(target=self.set_default_user).start()
             self.window.write_event_value('_login_success_', True)
 
     def print_by_problem_id(self, problem_url, path):

@@ -1,4 +1,5 @@
 pdfkit
 PySimpleGUI
 requests
+lxml
 beautifulsoup4
