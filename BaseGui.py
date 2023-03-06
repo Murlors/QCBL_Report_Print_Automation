@@ -95,28 +95,28 @@ class BaseGUI:
             course_id = '107'
         return course_id
 
-    def get_input_volume(self, volume_dict):
-        input_volume = sg.popup_get_text(
-            message='请输入要打印的卷数：\n连续的用"-"(例588-598),分散的用"."(例588.589)',
-            font=("微软雅黑", 12), icon=self.icon, size=(30, 1)
-        )
-        if sum(1 for i in input_volume if '-' in i) != 1:
-            input_volume = list(map(int, input_volume.split('.')))
-            if sum(1 for i in input_volume if i not in volume_dict) >= 1:
-                sg.popup_error("卷数编号填写错误！", font=("微软雅黑", 12), icon=self.icon)
-                input_volume = None
-                self.window.write_event_value('_input_volume_', volume_dict)
-        else:
-            begin, end = list(map(int, input_volume.split('-')))
-            if end < begin or sum(1 for i in range(begin, end + 1) if i not in volume_dict) >= 1:
-                sg.popup_error("卷数编号填写错误！", font=("微软雅黑", 12), icon=self.icon)
-                input_volume = None
-                self.window.write_event_value('_input_volume_', volume_dict)
+    def get_input_volume(self, course_id, volume_dict):
+        input_volume = None
+        while not input_volume:
+            input_volume = sg.popup_get_text(
+                message='请输入要打印的卷数：\n连续的用"-"(例588-598),分散的用"."(例588.589)',
+                font=("微软雅黑", 12), icon=self.icon, size=(30, 1)
+            )
+            if sum(1 for i in input_volume if '-' in i) != 1:
+                input_volume = list(map(int, input_volume.split('.')))
+                if sum(1 for i in input_volume if i not in volume_dict) >= 1:
+                    sg.popup_error("卷数编号填写错误！", font=("微软雅黑", 12), icon=self.icon)
+                    input_volume = None
             else:
-                input_volume = [i for i in range(begin, end + 1)]
+                begin, end = list(map(int, input_volume.split('-')))
+                if end < begin or sum(1 for i in range(begin, end + 1) if i not in volume_dict) >= 1:
+                    sg.popup_error("卷数编号填写错误！", font=("微软雅黑", 12), icon=self.icon)
+                else:
+                    input_volume = [i for i in range(begin, end + 1)]
 
-        if input_volume:
-            self.window.write_event_value('_input_volume_', input_volume)
+        self.window.write_event_value('_input_volume_',
+                                      {'course_id': course_id, 'volume_dict': volume_dict,
+                                       'input_volume': input_volume})
 
     def by_problem_id(self):
         problem_list = self.get_problem_id()
@@ -156,11 +156,18 @@ class BaseGUI:
                     self.by_volume_id()
 
             if event == '_get_input_volume_':
-                volume_dict = values[event]
+                arg = values[event]
                 try:
-                    self.get_input_volume(volume_dict)
+                    for i in arg['volume_dict']:
+                        print(f'{i} {arg["volume_dict"][i]["text"]}')
+                    self.get_input_volume(**arg)
                 except Exception as e:
                     print(e)
+
+            if event == '_input_volume_':
+                arg = values[event]
+                print(f'选定的卷数:{arg["input_volume"]}')
+                self.qcbl.print_by_volume(**arg)
 
             if event == '_print_progress_':
                 value = values[event]

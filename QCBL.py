@@ -26,13 +26,13 @@ class QCBL:
     def get_default_user(self):
         if os.path.exists("user.json"):
             with open("user.json", "r") as f:
-                user = json.load(f)  # 加载学号和密码
+                user = json.load(f)
                 self.username = user["username"]
                 self.password = user["password"]
 
     def get_stu_id(self):
         response = requests.get(f'{self.BASE_URL}', cookies=self.cookies)
-        self.stu_id = int(re.findall(r'<a href="/user/(\d+)/detail/" class="navbar-link">.*</a>', response.text)[0]) + 4
+        self.stu_id = re.findall(r'<a href="/user/(\d+)/detail/" class="navbar-link">.*</a>', response.text)[0]
         print(f"当前用户的ID属性值为: {self.stu_id}")
 
     def set_default_user(self):
@@ -43,45 +43,44 @@ class QCBL:
     def set_sg_window(self, window):
         self.window = window
 
-    def set_options_pdfkit(self, cookies):
+    def set_options_pdfkit(self):
         self.options_pdf = {
             'page-size': 'A4',
             'header-right': '[title]',
             'footer-right': '[page]',
             'cookie': [
-                ('csrftoken', cookies['csrftoken']),
-                ('sessionid', cookies['sessionid'])
+                ('csrftoken', self.cookies['csrftoken']),
+                ('sessionid', self.cookies['sessionid'])
             ],
         }
 
     def login(self, username, password):
-        # TO BE verified:
         self.username = username
         self.password = password
-        response = requests.get(self.BASE_URL, timeout=4)
-        cookies = response.cookies.get_dict()
+        session = requests.Session()
+        session.get(self.BASE_URL, timeout=4)
+        cookies = session.cookies.get_dict()
         data = {
             'csrfmiddlewaretoken': cookies['csrftoken'],
             'username': username,
             'password': password
         }
-        response = requests.post(f'{self.BASE_URL}/user/logincheck/', data=data, cookies=cookies, timeout=4)
-        self.cookies = response.cookies.get_dict()
+        session.post(f'{self.BASE_URL}/user/logincheck/', data=data, timeout=4)
+        self.cookies = session.cookies.get_dict()
         if self.cookies is not None and 'sessionid' in self.cookies:
             Thread(target=self.get_stu_id).start()
-            Thread(target=self.set_options_pdfkit, args=cookies).start()
+            Thread(target=self.set_options_pdfkit).start()
             Thread(target=self.set_default_user).start()
             self.window.write_event_value('_login_success_', True)
 
     def print_by_problem_id(self, problem_url, path):
-        # TO BE verified: 将selenium修改为request
         response = requests.get(problem_url, cookies=self.cookies)
 
         soup = BeautifulSoup(response.text, 'lxml')
         table = soup.find('table', class_='table table-hover').find('tbody')
         rows = table.find_all('tr')
         judges = [row.find_all('td') for row in rows]
-        report_url = [f"{columns[0].find('a').get('href')}{self.print_type}"
+        report_url = [f"{self.BASE_URL}{columns[0].find('a').get('href')}{self.print_type}"
                       for columns in judges if columns[5].text.strip() == '答案正确'][0]
         if report_url is None:
             return
@@ -98,16 +97,14 @@ class QCBL:
             progress = 0
             self.window.write_event_value(
                 '_print_progress_', {'progress': progress, 'len_of_problem': len(problem_list), 'result': None})
-
-            args = [{
-                'problem_url':
-                    f'{self.BASE_URL}/judge/'
-                    f'course/{course_id}/' if course_id != -1 else ''
-                    f'judgelist/?problem={problem_id}&userprofile={self.stu_id}',
-                'path': self.print_path
-            } for problem_id in problem_list]
-
-            for result in executor.map(self.print_by_problem_id, args):
+            problem_url_list = [
+                f'{self.BASE_URL}/judge/course'
+                f'/{course_id}/judgelist/?problem={problem_id}&userprofile={self.stu_id}'
+                for problem_id in problem_list] if course_id != -1 else [
+                f'{self.BASE_URL}/judge/course'
+                f'/judgelist/?problem={problem_id}&userprofile={self.stu_id}'
+                for problem_id in problem_list]
+            for result in executor.map(self.print_by_problem_id, problem_url_list, self.print_path * len(problem_list)):
                 progress += 1
                 self.window.write_event_value(
                     '_print_progress_', {'progress': progress, 'len_of_problem': len(problem_list), 'result': result})
@@ -116,42 +113,35 @@ class QCBL:
 
     def by_volume(self, course_id):
         course_url = f'{self.BASE_URL}/course/{course_id}/detail/'
-        # TO BE verified: 将selenium修改为request
         response = requests.get(course_url, cookies=self.cookies)
 
         soup = BeautifulSoup(response.text, 'lxml')
         table = soup.find('table', class_='table table-hover').find('tbody')
         rows = table.find_all('tr')
         volumes = [row.find_all('td') for row in rows]
-        volume_dict = {int(re.findall(r"\d+\.?\d*", volume[0])[0]):
-                           {'text': volume[1].text,
-                            'href': volume[1].find('a').get('href')}
-                       for volume in volumes}
+        volume_dict = {
+            int(re.findall(r"\d+\.?\d*", str(volume[0]))[0]):
+                {'text': volume[1].text, 'href': volume[1].find('a').get('href')}
+            for volume in volumes}
 
-        input_volume = self.get_input_volume(volume_dict)
+        self.get_input_volume(course_id, volume_dict)
 
+    def print_by_volume(self, course_id, volume_dict, input_volume):
         for volume in input_volume:
             print_path = os.path.join(self.print_path, volume_dict[volume]['text'])
             os.makedirs(print_path, exist_ok=True)
 
             volume_url = volume_dict[volume]['href']
-            response = requests.get(volume_url, cookies=self.cookies)
+            response = requests.get(self.BASE_URL + volume_url, cookies=self.cookies)
 
             soup = BeautifulSoup(response.text, 'lxml')
             table = soup.find('table', class_='table table-hover').find('tbody')
             rows = table.find_all('tr')
             problems = [row.find_all('td') for row in rows]
-            problem_list = [int(re.findall(r"\d+\.?\d*", problem[1])[0]) for problem in problems]
+            problem_list = [int(re.findall(r"\d+\.?\d*", str(problem[1]))[0]) for problem in problems]
 
             self.by_problem_id(problem_list, course_id)
 
-    def get_input_volume(self, volume_dict):
-        self.window.write_event_value('_get_input_volume_', volume_dict)
-
-        while True:
-            event, values = self.window.read()
-
-            if event == '_input_volume_':
-                input_volume = values[event]
-                print(f'选定的卷数:{input_volume}')
-                return input_volume
+    def get_input_volume(self, course_id, volume_dict):
+        self.window.write_event_value('_get_input_volume_',
+                                      {'course_id': course_id, 'volume_dict': volume_dict})
