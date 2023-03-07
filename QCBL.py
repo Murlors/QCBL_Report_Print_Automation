@@ -86,17 +86,18 @@ class QCBL:
         table = soup.find('table', class_='table table-hover').find('tbody')
         rows = table.find_all('tr')
         judges = [row.find_all('td') for row in rows]
-        report_url = [self.BASE_URL+columns[0].find('a').get('href')
-                      for columns in judges if columns[5].text.strip() == '答案正确'][0]
-        if report_url is None:
+        report_referer_url = [self.BASE_URL+columns[0].find('a').get('href')
+                              for columns in judges if columns[5].text.strip() == '答案正确'][0]
+        if report_referer_url is None:
             return
+        report_url = report_referer_url+self.print_type
         response = requests.get(report_url, cookies=self.cookies, headers=self.headers)
 
         output = re.findall(r"<title>(.*?)</title>", response.text)[0].replace(':', '_').strip()
         output_path = os.path.join(path, f'{output}.pdf')
         self.options_pdf['footer-left'] = report_url
-        self.options_pdf['custom-header'][1] = ['Referer', report_url]
-        pdfkit.from_url(report_url+self.print_type, output_path, options=self.options_pdf)
+        self.options_pdf['custom-header'][1] = ['Referer', report_referer_url]
+        pdfkit.from_url(report_url, output_path, options=self.options_pdf, verbose=True)
         return output_path
 
     def by_problem_id(self, problem_list, course_id=-1):
