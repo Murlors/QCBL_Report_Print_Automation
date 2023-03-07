@@ -22,6 +22,8 @@ class QCBL:
         self.print_path = None
         self.print_type = 'print_exp/'
         self.is_login = False
+        self.headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko)"
+                                      "Chrome/110.0.0.0 Safari/537.36 Edg/110.0.1587.63"}
 
     def get_default_user(self):
         if os.path.exists("user.json"):
@@ -52,6 +54,10 @@ class QCBL:
                 ('csrftoken', self.cookies['csrftoken']),
                 ('sessionid', self.cookies['sessionid'])
             ],
+            'custom-header': [
+                ('User-Agent', self.headers['User-Agent']),
+                ('Referer', '')
+            ],
         }
 
     def login(self, username, password):
@@ -74,22 +80,23 @@ class QCBL:
             self.window.write_event_value('_login_success_', True)
 
     def print_by_problem_id(self, problem_url, path):
-        response = requests.get(problem_url, cookies=self.cookies)
+        response = requests.get(problem_url, cookies=self.cookies, headers=self.headers)
 
         soup = BeautifulSoup(response.text, 'lxml')
         table = soup.find('table', class_='table table-hover').find('tbody')
         rows = table.find_all('tr')
         judges = [row.find_all('td') for row in rows]
-        report_url = [f"{self.BASE_URL}{columns[0].find('a').get('href')}{self.print_type}"
+        report_url = [self.BASE_URL+columns[0].find('a').get('href')
                       for columns in judges if columns[5].text.strip() == '答案正确'][0]
         if report_url is None:
             return
-        response = requests.get(report_url, cookies=self.cookies)
+        response = requests.get(report_url, cookies=self.cookies, headers=self.headers)
 
         output = re.findall(r"<title>(.*?)</title>", response.text)[0].replace(':', '_').strip()
         output_path = os.path.join(path, f'{output}.pdf')
         self.options_pdf['footer-left'] = report_url
-        pdfkit.from_url(report_url, output_path, options=self.options_pdf)
+        self.options_pdf['custom-header'][1] = ['Referer', report_url]
+        pdfkit.from_url(report_url+self.print_type, output_path, options=self.options_pdf)
         return output_path
 
     def by_problem_id(self, problem_list, course_id=-1):

@@ -167,7 +167,8 @@ class BaseGUI:
             if event == '_input_volume_':
                 arg = values[event]
                 print(f'选定的卷数:{arg["input_volume"]}')
-                self.qcbl.print_by_volume(**arg)
+                Thread(target=self.qcbl.print_by_volume,
+                       args=(arg['course_id'], arg['volume_dict'], arg['input_volume'])).start()
 
             if event == '_print_progress_':
                 value = values[event]
