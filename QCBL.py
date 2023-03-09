@@ -1,6 +1,7 @@
 import json
 import os
 import re
+import time
 from concurrent.futures import ThreadPoolExecutor
 from threading import Thread
 
@@ -24,6 +25,28 @@ class QCBL:
         self.is_login = False
         self.headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko)"
                                       "Chrome/110.0.0.0 Safari/537.36 Edg/110.0.1587.63"}
+        self.n_tries = 5
+        self.fail_delay = 3
+        self.fail_list = []
+
+    def requests_handler(self, method, url, **kwargs):
+        for i in range(self.n_tries):
+            try:
+                if method == 'GET':
+                    response = requests.get(url, **kwargs)
+                elif method == 'POST':
+                    response = requests.post(url, **kwargs)
+                else:
+                    raise Exception("requests_handler()方法的method参数只能为GET或POST")
+                if response.status_code == 200:
+                    return response
+            except Exception:
+                continue
+            finally:
+                print(f'This is {i} attempt to collect {url}')
+                time.sleep(self.fail_delay)
+        self.fail_list.append(url)
+        raise Exception(f"请求{url}失败")
 
     def get_default_user(self):
         if os.path.exists("user.json"):
@@ -33,7 +56,7 @@ class QCBL:
                 self.password = user["password"]
 
     def get_stu_id(self):
-        response = requests.get(f'{self.BASE_URL}', cookies=self.cookies)
+        response = self.requests_handler('GET', f'{self.BASE_URL}', cookies=self.cookies)
         self.stu_id = re.findall(r'<a href="/user/(\d+)/detail/" class="navbar-link">.*</a>', response.text)[0]
         print(f"当前用户的ID属性值为: {self.stu_id}")
 
@@ -80,18 +103,18 @@ class QCBL:
             self.window.write_event_value('_login_success_', True)
 
     def print_by_problem_id(self, problem_url, path):
-        response = requests.get(problem_url, cookies=self.cookies, headers=self.headers)
+        response = self.requests_handler('GET', problem_url, cookies=self.cookies, headers=self.headers)
 
         soup = BeautifulSoup(response.text, 'lxml')
         table = soup.find('table', class_='table table-hover').find('tbody')
         rows = table.find_all('tr')
         judges = [row.find_all('td') for row in rows]
-        report_referer_url = [self.BASE_URL+columns[0].find('a').get('href')
+        report_referer_url = [self.BASE_URL + columns[0].find('a').get('href')
                               for columns in judges if columns[5].text.strip() == '答案正确'][0]
         if report_referer_url is None:
             return
-        report_url = report_referer_url+self.print_type
-        response = requests.get(report_url, cookies=self.cookies, headers=self.headers)
+        report_url = report_referer_url + self.print_type
+        response = self.requests_handler('GET', report_url, cookies=self.cookies, headers=self.headers)
 
         output = re.findall(r"<title>(.*?)</title>", response.text)[0].replace(':', '_').strip()
         output_path = os.path.join(path, f'{output}.pdf')
@@ -112,7 +135,8 @@ class QCBL:
                 f'{self.BASE_URL}/judge'
                 f'/judgelist/?problem={problem_id}&userprofile={self.stu_id}'
                 for problem_id in problem_list]
-            for result in executor.map(self.print_by_problem_id, problem_url_list, [self.print_path] * len(problem_list)):
+            for result in executor.map(self.print_by_problem_id, problem_url_list,
+                                       [self.print_path] * len(problem_list)):
                 progress += 1
                 self.window.write_event_value(
                     '_print_progress_', {'progress': progress, 'len_of_problem': len(problem_list), 'result': result})
@@ -121,7 +145,7 @@ class QCBL:
 
     def by_volume(self, course_id):
         course_url = f'{self.BASE_URL}/course/{course_id}/detail/'
-        response = requests.get(course_url, cookies=self.cookies)
+        response = self.requests_handler('GET', course_url, cookies=self.cookies)
 
         soup = BeautifulSoup(response.text, 'lxml')
         table = soup.find('table', class_='table table-hover').find('tbody')
@@ -140,7 +164,7 @@ class QCBL:
             os.makedirs(print_path, exist_ok=True)
 
             volume_url = volume_dict[volume]['href']
-            response = requests.get(self.BASE_URL + volume_url, cookies=self.cookies)
+            response = self.requests_handler('GET', self.BASE_URL + volume_url, cookies=self.cookies)
 
             soup = BeautifulSoup(response.text, 'lxml')
             table = soup.find('table', class_='table table-hover').find('tbody')
