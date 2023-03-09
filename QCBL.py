@@ -43,7 +43,7 @@ class QCBL:
             except Exception:
                 continue
             finally:
-                print(f'This is {i} attempt to collect {url}')
+                print(f'请求{url}失败，正在重试第{i + 1}次')
                 time.sleep(self.fail_delay)
         self.fail_list.append(url)
         raise Exception(f"请求{url}失败")
@@ -120,8 +120,21 @@ class QCBL:
         output_path = os.path.join(path, f'{output}.pdf')
         self.options_pdf['footer-left'] = report_url
         self.options_pdf['custom-header'][1] = ['Referer', report_referer_url]
-        pdfkit.from_url(report_url, output_path, options=self.options_pdf, verbose=True)
-        return output_path
+
+        return self.pdf_print_handle(output_path, report_url)
+
+    def pdf_print_handle(self, output_path, report_url):
+        for i in range(self.n_tries):
+            try:
+                pdfkit.from_url(report_url, output_path, options=self.options_pdf)
+                return output_path
+            except Exception:
+                continue
+            finally:
+                print(f'打印失败，正在重试第{i + 1}次: {report_url}')
+                time.sleep(self.fail_delay)
+
+        return f"打印失败{report_url}"
 
     def by_problem_id(self, problem_list, course_id=-1):
         with ThreadPoolExecutor(len(problem_list)) as executor:
@@ -141,7 +154,8 @@ class QCBL:
                 self.window.write_event_value(
                     '_print_progress_', {'progress': progress, 'len_of_problem': len(problem_list), 'result': result})
 
-        self.window.write_event_value('_print_success_', True)
+        self.window.write_event_value('_print_success_', self.fail_list)
+        self.fail_list = []
 
     def by_volume(self, course_id):
         course_url = f'{self.BASE_URL}/course/{course_id}/detail/'

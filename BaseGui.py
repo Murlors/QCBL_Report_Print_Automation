@@ -1,4 +1,5 @@
 import os
+import re
 from threading import Thread
 
 import PySimpleGUI as sg
@@ -48,39 +49,42 @@ class BaseGUI:
     def set_print_path(self):
         self.qcbl.print_path = sg.popup_get_folder(
             message='选择实验报告打印的位置:', default_path=os.path.join(os.getcwd(), 'print'),
-            font=self.font_minor, icon=self.icon, size=(30, 1), modal=False
+            font=self.font_minor, icon=self.icon, size=(30, 1)
         )
         self.is_set_print_path = True
 
     def set_print_type(self):
-        print_type = sg.popup_get_text(
-            message='选择要打印的类型:\n1、生成实验报告\n2、生成作业\n',
-            font=self.font_minor, icon=self.icon, size=(30, 1)
-        )
-        if print_type.isdigit():
-            if print_type == '1':
-                self.qcbl.print_type = 'print_exp/'
-            elif print_type == '2':
-                self.qcbl.print_type = 'print_ass/'
+        print_type = None
+        while not print_type:
+            print_type = sg.popup_get_text(
+                message='选择要打印的类型:\n1、生成实验报告\n2、生成作业\n',
+                font=self.font_minor, icon=self.icon, size=(30, 1)
+            )
+            if print_type.isdigit():
+                if print_type == '1':
+                    self.qcbl.print_type = 'print_exp/'
+                elif print_type == '2':
+                    self.qcbl.print_type = 'print_ass/'
+                else:
+                    sg.popup_error("选择错误！", font=self.font_minor, icon=self.icon)
 
     def get_problem_id(self):
-        while True:
+        problem_list = None
+        while not problem_list:
             problem_id = sg.popup_get_text(
                 message='请输入要打印的题目编号:\n连续的用"-"(例588-598),分散的用"."(例588.589)',
                 font=self.font_minor, icon=self.icon, size=(30, 1)
             )
-            if sum(1 for i in problem_id if '-' in i) != 1:
+            if sum(1 for i in problem_id if '.' in i) >= 1:
                 problem_list = list(map(int, problem_id.split('.')))
-                break
-            else:
+            elif sum(1 for i in problem_id if '-' in i) == 1:
                 begin, end = list(map(int, problem_id.split('-')))
                 if end < begin:
-                    sg.popup_error(
-                        "题目编号编写错误！", font=self.font_minor, icon=self.icon
-                    )
+                    sg.popup_error("题目编号编写错误！", font=self.font_minor, icon=self.icon)
                 else:
-                    problem_list = [i for i in range(begin, end + 1)]
-                    break
+                    problem_list = list(range(begin, end + 1))
+            else:
+                sg.popup_error("题目编号编写错误！", font=self.font_minor, icon=self.icon)
         return problem_list
 
     def get_course_id(self):
@@ -102,17 +106,19 @@ class BaseGUI:
                 message='请输入要打印的卷数：\n连续的用"-"(例588-598),分散的用"."(例588.589)',
                 font=("微软雅黑", 12), icon=self.icon, size=(30, 1)
             )
-            if sum(1 for i in input_volume if '-' in i) != 1:
+            if sum(1 for i in input_volume if '.' in i) >= 1:
                 input_volume = list(map(int, input_volume.split('.')))
                 if sum(1 for i in input_volume if i not in volume_dict) >= 1:
                     sg.popup_error("卷数编号填写错误！", font=("微软雅黑", 12), icon=self.icon)
                     input_volume = None
-            else:
+            elif sum(1 for i in input_volume if '-' in i) == 1:
                 begin, end = list(map(int, input_volume.split('-')))
                 if end < begin or sum(1 for i in range(begin, end + 1) if i not in volume_dict) >= 1:
                     sg.popup_error("卷数编号填写错误！", font=("微软雅黑", 12), icon=self.icon)
                 else:
-                    input_volume = [i for i in range(begin, end + 1)]
+                    input_volume = list(range(begin, end + 1))
+            else:
+                sg.popup_error("卷数编号填写错误！", font=("微软雅黑", 12), icon=self.icon)
 
         self.window.write_event_value('_input_volume_',
                                       {'course_id': course_id, 'volume_dict': volume_dict,
@@ -177,6 +183,9 @@ class BaseGUI:
                                            f'打印完成:{value["result"]}' if value['result'] else '')
 
             if event == '_print_success_':
+                for failed_url in values[event]:
+                    failed_problem = re.findall(r'problem=(\d+)', failed_url)[0]
+                    print(f'打印失败的题目:{failed_problem}')
                 sg.popup('打印成功啦,可以退出了(也可以继续打印)', font=self.font_minor, icon=self.icon)
 
             if event == sg.WIN_CLOSED or event == '_exit_':
