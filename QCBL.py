@@ -106,13 +106,13 @@ class QCBL:
             self.window.write_event_value(
                 '_print_progress_', {'progress': progress, 'len_of_problem': len(problem_list), 'result': None})
             problem_url_list = [
-                f'{self.BASE_URL}/judge/course'
-                f'/{course_id}/judgelist/?problem={problem_id}&userprofile={self.stu_id}'
+                f'{self.BASE_URL}/judge'
+                f'/course/{course_id}/judgelist/?problem={problem_id}&userprofile={self.stu_id}'
                 for problem_id in problem_list] if course_id != -1 else [
-                f'{self.BASE_URL}/judge/course'
+                f'{self.BASE_URL}/judge'
                 f'/judgelist/?problem={problem_id}&userprofile={self.stu_id}'
                 for problem_id in problem_list]
-            for result in executor.map(self.print_by_problem_id, problem_url_list, self.print_path * len(problem_list)):
+            for result in executor.map(self.print_by_problem_id, problem_url_list, [self.print_path] * len(problem_list)):
                 progress += 1
                 self.window.write_event_value(
                     '_print_progress_', {'progress': progress, 'len_of_problem': len(problem_list), 'result': result})
