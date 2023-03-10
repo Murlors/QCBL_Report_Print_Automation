@@ -15,6 +15,15 @@ def get_config():
     if os.path.exists("config.json"):
         with open("config.json", "r", encoding="utf-8") as f:
             return json.load(f)
+    else:
+        return {
+            "username": "username",
+            "password": "password",
+            "n_threads": 4,
+            "n_tries": 5,
+            "time_between_tries": 3,
+            "verbose": False
+        }
 
 
 def save_config():
