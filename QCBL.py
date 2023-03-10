@@ -79,7 +79,7 @@ class QCBL:
         return pdf_print_handle(output_path, report_url, self.options_pdf)
 
     def by_problem_id(self, problem_list, course_id=-1):
-        with ThreadPoolExecutor(len(problem_list)) as executor:
+        with ThreadPoolExecutor(config.get('n_threads', 4)) as executor:
             progress = 0
             self.window.write_event_value(
                 '_print_progress_', {'progress': progress, 'len_of_problem': len(problem_list), 'result': None})
