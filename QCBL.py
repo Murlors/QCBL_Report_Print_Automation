@@ -1,4 +1,4 @@
-import os
+import os.path
 import re
 from concurrent.futures import ThreadPoolExecutor
 from threading import Thread
@@ -59,7 +59,10 @@ class QCBL:
             self.window.write_event_value('_login_success_', True)
 
     def print_by_problem_id(self, problem_url, path):
-        response = requests_handler('GET', problem_url, cookies=self.cookies)
+        try:
+            response = requests_handler('GET', problem_url, cookies=self.cookies)
+        except Exception as e:
+            return e
 
         soup = BeautifulSoup(response.text, 'lxml')
         table = soup.find('table', class_='table table-hover').find('tbody')
@@ -70,16 +73,18 @@ class QCBL:
         if report_referer_url is None:
             return
         report_url = report_referer_url + self.print_type
-        response = requests_handler('GET', report_url, cookies=self.cookies)
-
-        output = re.findall(r"<title>(.*?)</title>", response.text)[0].replace(':', '_').strip()
+        try:
+            response = requests_handler('GET', report_url, cookies=self.cookies)
+        except Exception as e:
+            return e
+        output = re.findall(r"<title>(.*?)</title>", response.text)[0].replace(':', '_').replace(' ', '').strip()
         output_path = os.path.join(path, f'{output}.pdf')
         self.options_pdf['footer-left'] = report_url
 
-        return pdf_print_handle(output_path, report_url, self.options_pdf)
+        return pdf_print_handle(report_url, output_path, self.options_pdf)
 
-    def by_problem_id(self, problem_list, course_id=-1):
-        with ThreadPoolExecutor(config.get('n_threads', 4)) as executor:
+    def by_problem_id(self, print_path, problem_list, course_id=-1):
+        with ThreadPoolExecutor(config.get('n_threads', 2)) as executor:
             progress = 0
             self.window.write_event_value(
                 '_print_progress_', {'progress': progress, 'len_of_problem': len(problem_list), 'result': None})
@@ -91,7 +96,7 @@ class QCBL:
                 f'/judgelist/?problem={problem_id}&userprofile={self.stu_id}'
                 for problem_id in problem_list]
             for result in executor.map(self.print_by_problem_id, problem_url_list,
-                                       [self.print_path] * len(problem_list)):
+                                       [print_path] * len(problem_list)):
                 progress += 1
                 self.window.write_event_value(
                     '_print_progress_', {'progress': progress, 'len_of_problem': len(problem_list), 'result': result})
@@ -106,7 +111,7 @@ class QCBL:
         volumes = [row.find_all('td') for row in rows]
         volume_dict = {
             int(re.findall(r"\d+\.?\d*", str(volume[0]))[0]):
-                {'text': volume[1].text, 'href': volume[1].find('a').get('href')}
+                {'text': volume[1].text.replace(' ', '').strip(), 'href': volume[1].find('a').get('href')}
             for volume in volumes}
 
         self.get_input_volume(course_id, volume_dict)
@@ -125,7 +130,7 @@ class QCBL:
             problems = [row.find_all('td') for row in rows]
             problem_list = [int(re.findall(r"\d+\.?\d*", str(problem[1]))[0]) for problem in problems]
 
-            self.by_problem_id(problem_list, course_id)
+            self.by_problem_id(print_path, problem_list, course_id)
 
         self.window.write_event_value('_print_success_', fail_list)
         fail_list.clear()

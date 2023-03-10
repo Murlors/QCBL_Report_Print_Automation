@@ -1,4 +1,4 @@
-import os
+import os.path
 import re
 from threading import Thread
 
@@ -129,7 +129,7 @@ class BaseGUI:
         print(f'选定的题目编号:{problem_list}')
 
         try:
-            Thread(target=self.qcbl.by_problem_id, args=(problem_list,)).start()
+            Thread(target=self.qcbl.by_problem_id, args=(self.qcbl.print_path, problem_list,)).start()
         except Exception as e:
             sg.popup_error("%s" % e, font=self.font_minor, icon=self.icon)
 

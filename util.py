@@ -1,5 +1,6 @@
 import json
 import os.path
+import random
 import time
 
 import pdfkit
@@ -19,9 +20,9 @@ def get_config():
         return {
             "username": "username",
             "password": "password",
-            "n_threads": 4,
+            "n_threads": 2,
             "n_tries": 5,
-            "time_between_tries": 3,
+            "time_between_tries": 2,
             "verbose": False
         }
 
@@ -46,7 +47,8 @@ def requests_handler(method, url, **kwargs):
                 raise Exception(f'请求{url}失败，状态码为{response.status_code}')
         except Exception:
             verbose_print(f'请求{url}失败，正在重试第{i + 1}次')
-            time.sleep(config.get('time_between_tries', 3))
+            # 在1.1秒到2.2秒之间随机等待
+            time.sleep(config.get('time_between_tries', 2) + random.uniform(0, config.get('time_between_tries', 2)))
 
     fail_list.append(url)
     raise Exception(f"请求{url}失败")
@@ -55,11 +57,11 @@ def requests_handler(method, url, **kwargs):
 def pdf_print_handle(report_url, output_path, options_pdf):
     for i in range(config.get('n_tries', 5)):
         try:
-            pdfkit.from_url(report_url, output_path, options=options_pdf)
+            pdfkit.from_url(report_url, output_path, options=options_pdf, verbose=config.get('verbose', False))
             return output_path
         except Exception:
             verbose_print(f'打印失败，正在重试第{i + 1}次: {report_url}')
-            time.sleep(config.get('time_between_tries', 3))
+            time.sleep(config.get('time_between_tries', 2) + random.uniform(0, config.get('time_between_tries', 2)))
 
     return f"打印失败{report_url}"
 
