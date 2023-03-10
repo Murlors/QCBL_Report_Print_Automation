@@ -5,6 +5,7 @@ from threading import Thread
 import PySimpleGUI as sg
 
 from QCBL import QCBL
+from util import config
 
 
 class BaseGUI:
@@ -12,16 +13,15 @@ class BaseGUI:
 
     def __init__(self):
         self.qcbl = QCBL()
-        self.qcbl.get_default_user()
 
         sg.theme('LightGrey1')
         self.font_main = ("微软雅黑", 16)
         self.font_minor = ("微软雅黑", 12)
         self.input = [[sg.Text('学号:', font=self.font_main),
-                       sg.InputText(key='_username_', default_text=self.qcbl.username,
+                       sg.InputText(key='_username_', default_text=config.get('username', 'username'),
                                     font=self.font_main, size=(12, 1))],
                       [sg.Text('密码:', font=self.font_main),
-                       sg.InputText(key='_password_', default_text=self.qcbl.password,
+                       sg.InputText(key='_password_', default_text=config.get('password', 'password'),
                                     password_char='*', font=self.font_main, size=(12, 1))]
                       ]
         self.radio = sg.Frame(layout=[

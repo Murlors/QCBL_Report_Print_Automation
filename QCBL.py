@@ -1,13 +1,12 @@
-import json
 import os
 import re
-import time
 from concurrent.futures import ThreadPoolExecutor
 from threading import Thread
 
-import pdfkit
 import requests
 from bs4 import BeautifulSoup
+
+from util import config, fail_list, save_config, requests_handler, pdf_print_handle
 
 
 class QCBL:
@@ -16,54 +15,16 @@ class QCBL:
     def __init__(self):
         self.window = None
         self.cookies = None
-        self.password = None
-        self.username = None
         self.stu_id = None
         self.options_pdf = None
         self.print_path = None
         self.print_type = 'print_exp/'
         self.is_login = False
-        self.headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko)"
-                                      "Chrome/110.0.0.0 Safari/537.36 Edg/110.0.1587.63"}
-        self.n_tries = 5
-        self.fail_delay = 3
-        self.fail_list = []
-
-    def requests_handler(self, method, url, **kwargs):
-        for i in range(self.n_tries):
-            try:
-                if method == 'GET':
-                    response = requests.get(url, **kwargs)
-                elif method == 'POST':
-                    response = requests.post(url, **kwargs)
-                else:
-                    raise Exception("requests_handler()方法的method参数只能为GET或POST")
-                if response.status_code == 200:
-                    return response
-            except Exception:
-                continue
-            finally:
-                print(f'请求{url}失败，正在重试第{i + 1}次')
-                time.sleep(self.fail_delay)
-        self.fail_list.append(url)
-        raise Exception(f"请求{url}失败")
-
-    def get_default_user(self):
-        if os.path.exists("user.json"):
-            with open("user.json", "r") as f:
-                user = json.load(f)
-                self.username = user["username"]
-                self.password = user["password"]
 
     def get_stu_id(self):
-        response = self.requests_handler('GET', f'{self.BASE_URL}', cookies=self.cookies)
+        response = requests_handler('GET', f'{self.BASE_URL}', cookies=self.cookies)
         self.stu_id = re.findall(r'<a href="/user/(\d+)/detail/" class="navbar-link">.*</a>', response.text)[0]
         print(f"当前用户的ID属性值为: {self.stu_id}")
-
-    def set_default_user(self):
-        with open("user.json", "w") as f:
-            user = {"username": self.username, "password": self.password}
-            json.dump(user, f, indent=4)
 
     def set_sg_window(self, window):
         self.window = window
@@ -77,15 +38,10 @@ class QCBL:
                 ('csrftoken', self.cookies['csrftoken']),
                 ('sessionid', self.cookies['sessionid'])
             ],
-            'custom-header': [
-                ('User-Agent', self.headers['User-Agent']),
-                ('Referer', '')
-            ],
         }
 
     def login(self, username, password):
-        self.username = username
-        self.password = password
+        config.update({'username': username, 'password': password})
         session = requests.Session()
         session.get(self.BASE_URL, timeout=4)
         cookies = session.cookies.get_dict()
@@ -99,11 +55,11 @@ class QCBL:
         if self.cookies is not None and 'sessionid' in self.cookies:
             Thread(target=self.get_stu_id).start()
             Thread(target=self.set_options_pdfkit).start()
-            Thread(target=self.set_default_user).start()
+            Thread(target=save_config).start()
             self.window.write_event_value('_login_success_', True)
 
     def print_by_problem_id(self, problem_url, path):
-        response = self.requests_handler('GET', problem_url, cookies=self.cookies, headers=self.headers)
+        response = requests_handler('GET', problem_url, cookies=self.cookies)
 
         soup = BeautifulSoup(response.text, 'lxml')
         table = soup.find('table', class_='table table-hover').find('tbody')
@@ -114,27 +70,13 @@ class QCBL:
         if report_referer_url is None:
             return
         report_url = report_referer_url + self.print_type
-        response = self.requests_handler('GET', report_url, cookies=self.cookies, headers=self.headers)
+        response = requests_handler('GET', report_url, cookies=self.cookies)
 
         output = re.findall(r"<title>(.*?)</title>", response.text)[0].replace(':', '_').strip()
         output_path = os.path.join(path, f'{output}.pdf')
         self.options_pdf['footer-left'] = report_url
-        self.options_pdf['custom-header'][1] = ['Referer', report_referer_url]
 
-        return self.pdf_print_handle(output_path, report_url)
-
-    def pdf_print_handle(self, output_path, report_url):
-        for i in range(self.n_tries):
-            try:
-                pdfkit.from_url(report_url, output_path, options=self.options_pdf)
-                return output_path
-            except Exception:
-                continue
-            finally:
-                print(f'打印失败，正在重试第{i + 1}次: {report_url}')
-                time.sleep(self.fail_delay)
-
-        return f"打印失败{report_url}"
+        return pdf_print_handle(output_path, report_url, self.options_pdf)
 
     def by_problem_id(self, problem_list, course_id=-1):
         with ThreadPoolExecutor(len(problem_list)) as executor:
@@ -154,12 +96,9 @@ class QCBL:
                 self.window.write_event_value(
                     '_print_progress_', {'progress': progress, 'len_of_problem': len(problem_list), 'result': result})
 
-        self.window.write_event_value('_print_success_', self.fail_list)
-        self.fail_list = []
-
     def by_volume(self, course_id):
         course_url = f'{self.BASE_URL}/course/{course_id}/detail/'
-        response = self.requests_handler('GET', course_url, cookies=self.cookies)
+        response = requests_handler('GET', course_url, cookies=self.cookies)
 
         soup = BeautifulSoup(response.text, 'lxml')
         table = soup.find('table', class_='table table-hover').find('tbody')
@@ -178,7 +117,7 @@ class QCBL:
             os.makedirs(print_path, exist_ok=True)
 
             volume_url = volume_dict[volume]['href']
-            response = self.requests_handler('GET', self.BASE_URL + volume_url, cookies=self.cookies)
+            response = requests_handler('GET', self.BASE_URL + volume_url, cookies=self.cookies)
 
             soup = BeautifulSoup(response.text, 'lxml')
             table = soup.find('table', class_='table table-hover').find('tbody')
@@ -187,6 +126,9 @@ class QCBL:
             problem_list = [int(re.findall(r"\d+\.?\d*", str(problem[1]))[0]) for problem in problems]
 
             self.by_problem_id(problem_list, course_id)
+
+        self.window.write_event_value('_print_success_', fail_list)
+        fail_list.clear()
 
     def get_input_volume(self, course_id, volume_dict):
         self.window.write_event_value('_get_input_volume_',

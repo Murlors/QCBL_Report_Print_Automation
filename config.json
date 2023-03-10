@@ -1,0 +1,8 @@
+{
+    "username": "username",
+    "password": "password",
+    "n_tries": 5,
+    "time_between_tries": 2,
+    "verbose": false,
+    "n_threads": 8
+}
