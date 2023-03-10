@@ -1,4 +1,4 @@
-import os.path
+import os
 import re
 from threading import Thread
 

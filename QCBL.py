@@ -1,4 +1,4 @@
-import os.path
+import os
 import re
 from concurrent.futures import ThreadPoolExecutor
 from threading import Thread
