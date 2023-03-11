@@ -45,9 +45,8 @@ def requests_handler(method, url, **kwargs):
                 return response
             else:
                 raise Exception(f'请求{url}失败，状态码为{response.status_code}')
-        except Exception:
-            verbose_print(f'请求{url}失败，正在重试第{i + 1}次')
-            # 在1.1秒到2.2秒之间随机等待
+        except Exception as e:
+            verbose_print(f'请求{url}失败，正在重试第{i + 1}次: {e}')
             time.sleep(config.get('time_between_tries', 2) + random.uniform(0, config.get('time_between_tries', 2)))
 
     fail_list.append(url)
@@ -59,8 +58,8 @@ def pdf_print_handle(report_url, output_path, options_pdf):
         try:
             pdfkit.from_url(report_url, output_path, options=options_pdf, verbose=config.get('verbose', False))
             return output_path
-        except Exception:
-            verbose_print(f'打印失败，正在重试第{i + 1}次: {report_url}')
+        except Exception as e:
+            verbose_print(f'打印失败，正在重试第{i + 1}次: {report_url}. {e}')
             time.sleep(config.get('time_between_tries', 2) + random.uniform(0, config.get('time_between_tries', 2)))
 
     return f"打印失败{report_url}"

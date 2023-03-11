@@ -47,10 +47,13 @@ class BaseGUI:
             sg.popup_error("%s" % e, font=self.font_minor, icon=self.icon)
 
     def set_print_path(self):
-        self.qcbl.print_path = sg.popup_get_folder(
+        print_path = sg.popup_get_folder(
             message='选择实验报告打印的位置:', default_path=os.path.join(os.getcwd(), 'print'),
             font=self.font_minor, icon=self.icon, size=(30, 1)
         )
+        os.makedirs(print_path, exist_ok=True)
+        
+        self.qcbl.print_path = print_path
         self.is_set_print_path = True
 
     def set_print_type(self):
