@@ -52,7 +52,7 @@ class BaseGUI:
             font=self.font_minor, icon=self.icon, size=(30, 1)
         )
         os.makedirs(print_path, exist_ok=True)
-        
+
         self.qcbl.print_path = print_path
         self.is_set_print_path = True
 
@@ -132,7 +132,7 @@ class BaseGUI:
         print(f'选定的题目编号:{problem_list}')
 
         try:
-            Thread(target=self.qcbl.by_problem_id, args=(self.qcbl.print_path, problem_list,)).start()
+            Thread(target=self.qcbl.print_by_problem_id, args=(self.qcbl.print_path, problem_list,)).start()
         except Exception as e:
             sg.popup_error("%s" % e, font=self.font_minor, icon=self.icon)
 
@@ -141,7 +141,7 @@ class BaseGUI:
         print(f'选定的课程编号:{course_id}')
 
         try:
-            Thread(target=self.qcbl.by_volume, args=(course_id,)).start()
+            Thread(target=self.qcbl.get_volume_dict, args=(course_id,)).start()
         except Exception as e:
             sg.popup_error("%s" % e, font=self.font_minor, icon=self.icon)
 
@@ -168,7 +168,7 @@ class BaseGUI:
                 arg = values[event]
                 try:
                     for i in arg['volume_dict']:
-                        print(f'{i} {arg["volume_dict"][i]["text"]}')
+                        print(f'{i}: {arg["volume_dict"][i]["text"]}')
                     self.get_input_volume(**arg)
                 except Exception as e:
                     print(e)

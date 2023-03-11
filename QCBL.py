@@ -58,7 +58,7 @@ class QCBL:
             Thread(target=save_config).start()
             self.window.write_event_value('_login_success_', True)
 
-    def print_by_problem_id(self, problem_url, path):
+    def report_print(self, problem_url, path):
         try:
             response = requests_handler('GET', problem_url, cookies=self.cookies)
         except Exception as e:
@@ -67,9 +67,10 @@ class QCBL:
         soup = BeautifulSoup(response.text, 'lxml')
         table = soup.find('table', class_='table table-hover').find('tbody')
         rows = table.find_all('tr')
-        judges = [row.find_all('td') for row in rows]
         report_referer_url = [self.BASE_URL + columns[0].find('a').get('href')
-                              for columns in judges if columns[5].text.strip() == '答案正确'][0]
+                              for columns in (row.find_all('td') for row in rows)
+                              if columns[5].text.strip() == '答案正确'][0]
+
         if report_referer_url is None:
             return
         report_url = report_referer_url + self.print_type
@@ -95,13 +96,19 @@ class QCBL:
                 f'{self.BASE_URL}/judge'
                 f'/judgelist/?problem={problem_id}&userprofile={self.stu_id}'
                 for problem_id in problem_list]
-            for result in executor.map(self.print_by_problem_id, problem_url_list,
+            for result in executor.map(self.report_print, problem_url_list,
                                        [print_path] * len(problem_list)):
                 progress += 1
                 self.window.write_event_value(
                     '_print_progress_', {'progress': progress, 'len_of_problem': len(problem_list), 'result': result})
 
-    def by_volume(self, course_id):
+    def print_by_problem_id(self, print_path, problem_list):
+        self.by_problem_id(print_path, problem_list)
+
+        self.window.write_event_value('_print_success_', fail_list)
+        fail_list.clear()
+
+    def get_volume_dict(self, course_id):
         course_url = f'{self.BASE_URL}/course/{course_id}/detail/'
         response = requests_handler('GET', course_url, cookies=self.cookies)
 
@@ -114,7 +121,7 @@ class QCBL:
                 {'text': volume[1].text.replace(' ', '').strip(), 'href': volume[1].find('a').get('href')}
             for volume in volumes}
 
-        self.get_input_volume(course_id, volume_dict)
+        self.window.write_event_value('_get_input_volume_', {'course_id': course_id, 'volume_dict': volume_dict})
 
     def print_by_volume(self, course_id, volume_dict, input_volume):
         for volume in input_volume:
@@ -134,7 +141,3 @@ class QCBL:
 
         self.window.write_event_value('_print_success_', fail_list)
         fail_list.clear()
-
-    def get_input_volume(self, course_id, volume_dict):
-        self.window.write_event_value('_get_input_volume_',
-                                      {'course_id': course_id, 'volume_dict': volume_dict})
