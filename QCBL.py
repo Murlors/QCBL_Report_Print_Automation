@@ -6,7 +6,7 @@ from threading import Thread
 import requests
 from bs4 import BeautifulSoup
 
-from util import config, save_config, requests_handler, pdf_print_handle
+from util import config, save_config, requests_handler, pdf_print_handle, fail_list_append
 
 
 class QCBL:
@@ -20,7 +20,6 @@ class QCBL:
         self.print_path = None
         self.print_type = 'print_exp/'
         self.is_login = False
-        self.fail_list = []
 
     def get_stu_id(self):
         response = requests_handler('GET', f'{self.BASE_URL}', cookies=self.cookies)
@@ -79,7 +78,7 @@ class QCBL:
             response = requests_handler('GET', report_url, cookies=self.cookies)
         except Exception as e:
             if '404' in str(e):
-                self.fail_list.append(problem_url)
+                fail_list_append(problem_url)
             return e
         output = re.findall(r"<title>(.*?)</title>", response.text)[0].replace(':', '_').replace(' ', '').strip()
         output_path = os.path.join(path, f'{output}.pdf')

@@ -32,6 +32,21 @@ def save_config():
         json.dump(config, f, indent=4)
 
 
+def get_fail_list():
+    global fail_list
+    return fail_list
+
+
+def clear_fail_list():
+    global fail_list
+    fail_list.clear()
+
+
+def fail_list_append(url):
+    global fail_list
+    fail_list.append(url)
+
+
 def requests_handler(method, url, **kwargs):
     for i in range(config.get('n_tries', 5)):
         try:
@@ -51,6 +66,8 @@ def requests_handler(method, url, **kwargs):
             verbose_print(f'请求{url}失败，正在重试第{i + 1}次: {e}')
             time.sleep(config.get('time_between_tries', 2) + random.uniform(0, config.get('time_between_tries', 2)))
 
+    global fail_list
+    fail_list_append(url)
     raise Exception(f"请求{url}失败")
 
 
@@ -67,3 +84,4 @@ def pdf_print_handle(report_url, output_path, options_pdf):
 
 
 config = get_config()
+fail_list = []
