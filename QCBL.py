@@ -6,7 +6,7 @@ from threading import Thread
 import requests
 from bs4 import BeautifulSoup
 
-from util import config, fail_list, save_config, requests_handler, pdf_print_handle
+from util import config, save_config, requests_handler, pdf_print_handle
 
 
 class QCBL:
@@ -20,6 +20,7 @@ class QCBL:
         self.print_path = None
         self.print_type = 'print_exp/'
         self.is_login = False
+        self.fail_list = []
 
     def get_stu_id(self):
         response = requests_handler('GET', f'{self.BASE_URL}', cookies=self.cookies)
@@ -77,6 +78,8 @@ class QCBL:
         try:
             response = requests_handler('GET', report_url, cookies=self.cookies)
         except Exception as e:
+            if '404' in str(e):
+                self.fail_list.append(problem_url)
             return e
         output = re.findall(r"<title>(.*?)</title>", response.text)[0].replace(':', '_').replace(' ', '').strip()
         output_path = os.path.join(path, f'{output}.pdf')
@@ -105,8 +108,7 @@ class QCBL:
     def print_by_problem_id(self, print_path, problem_list):
         self.by_problem_id(print_path, problem_list)
 
-        self.window.write_event_value('_print_success_', fail_list)
-        fail_list.clear()
+        self.window.write_event_value('_print_success_', True)
 
     def get_volume_dict(self, course_id):
         course_url = f'{self.BASE_URL}/course/{course_id}/detail/'
@@ -139,5 +141,4 @@ class QCBL:
 
             self.by_problem_id(print_path, problem_list, course_id)
 
-        self.window.write_event_value('_print_success_', fail_list)
-        fail_list.clear()
+        self.window.write_event_value('_print_success_', True)

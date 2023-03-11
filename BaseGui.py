@@ -186,10 +186,17 @@ class BaseGUI:
                                            f'打印完成:{value["result"]}' if value['result'] else '')
 
             if event == '_print_success_':
-                for failed_url in values[event]:
-                    failed_problem = re.findall(r'problem=(\d+)', failed_url)[0]
-                    print(f'打印失败的题目:{failed_problem}')
-                sg.popup('打印成功啦,可以退出了(也可以继续打印)', font=self.font_minor, icon=self.icon)
+                fail_list = self.qcbl.fail_list
+                failed_problems = []
+                for failed_url in fail_list:
+                    if 'problem' in failed_url:
+                        failed_problem = re.findall(r'problem=(\d+)', failed_url)[0]
+                        failed_problems.append(failed_problem)
+
+                self.qcbl.fail_list.clear()
+                print(f'打印失败的题目:{failed_problems}')
+                sg.popup('打印成功啦,可以退出了(也可以继续打印)\n'
+                         f'打印失败的题目:{failed_problems}', font=self.font_minor, icon=self.icon)
 
             if event == sg.WIN_CLOSED or event == '_exit_':
                 break

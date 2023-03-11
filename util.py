@@ -46,10 +46,11 @@ def requests_handler(method, url, **kwargs):
             else:
                 raise Exception(f'请求{url}失败，状态码为{response.status_code}')
         except Exception as e:
+            if '404' in str(e):
+                raise e
             verbose_print(f'请求{url}失败，正在重试第{i + 1}次: {e}')
             time.sleep(config.get('time_between_tries', 2) + random.uniform(0, config.get('time_between_tries', 2)))
 
-    fail_list.append(url)
     raise Exception(f"请求{url}失败")
 
 
@@ -66,4 +67,3 @@ def pdf_print_handle(report_url, output_path, options_pdf):
 
 
 config = get_config()
-fail_list = []
